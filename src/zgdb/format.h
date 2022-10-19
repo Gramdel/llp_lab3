@@ -8,6 +8,7 @@
 typedef struct __attribute__((packed)) zgdbHeader {
 	uint32_t fileType; // должны быть записаны 4 буквы в UTF-8: ZGDB
 	uint64_t indexNumber : 40; // (5 байт) количество всех индексов файла
+	uint64_t freeListOffset; // смещение структуры, хранящей доступные индексы 
 } zgdbHeader;
 
 /* Обёртка для более удобного хранения открытого файла и заголовка вместе */

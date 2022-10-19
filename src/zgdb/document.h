@@ -4,13 +4,23 @@
 #include <stdbool.h>
 #include "format.h"
 
-/* Структура для заголовка блока */
+/* Структура для id, привязанного к документу (здесь и далее блок == документ). Для вложенных - id нулевой */
+typedef struct __attribute__((packed)) documentId {
+	uint32_t timestamp; // время создания документа в секундах с эпохи UNIX
+	uint64_t offset; // смещение документа относительно начала файла на момент создания документа
+} documentId;
+
+/* Структура для заголовка документа */
 typedef struct __attribute__((packed)) documentHeader {
-	uint64_t size : 40; // (5 байт) размер блока в байтах
-	uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к блоку
+	uint64_t size : 40; // (5 байт) размер документа в байтах
+	union {
+		uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
+		uint64_t internalOffset : 40; // (5 байт) смещение вложенного документа относительного родительского
+	};
+	documentId id; // id, привязанный к документу
 } documentHeader;
 
-/* Идентификаторы для типов данных в блоке */
+/* Идентификаторы для типов данных в документе */
 typedef enum elementType {
 	TYPE_INT = 0x01, // для int32_t
 	TYPE_DOUBLE = 0x02, // для double
@@ -19,9 +29,9 @@ typedef enum elementType {
 	TYPE_EMBEDDED_DOCUMENT = 0x05 // для вложенного документа
 } elementType;
 
-/* Терминаторы в блоке */
+/* Терминаторы в документе */
 typedef enum terminator {
-	NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в блоке
+	NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в документе
 	DOCUMENT_TERMINATOR = 0xFF, // терминатор для определения границ блоков
 	EMBEDDED_DOCUMENT_TERMINATOR = 0xFE // терминатор для вложенного документа
 } terminator;
@@ -34,7 +44,7 @@ typedef struct string {
 
 typedef struct document document;
 
-/* Структура для элемента блока */
+/* Структура для элемента документа */
 typedef struct element {
 	uint8_t type; // тип элемента
 	unsigned char key[13]; // ключ элемента
@@ -44,18 +54,20 @@ typedef struct element {
 		uint8_t booleanValue;
 		string* stringValue; // указатель на строку
 		document* documentValue; // указатель на вложенный документ
-	} value; // значение элемента
+	};
 } element;
 
-/* Структура для блока (документа) */
+/* Структура для документа (документа) */
 typedef struct document {
 	documentHeader header;
 	element* elements;
+	size_t elementNumber;
 } document;
 
 /* Структура для схемы данных */
 typedef struct documentSchema {
 	element* elements;
+	size_t elementNumber;
 } documentSchema;
 
 /* Функции для добавления данных в схему. Возвращают false при неудаче */
@@ -70,12 +82,12 @@ bool addStringToSchema(documentSchema* schema, unsigned char* key, string* value
 bool addDocumentToSchema(documentSchema* schema, unsigned char* key, document* value);
 
 /* Функция для инициализации схема с определнным количеством элементов */
-documentSchema createSchema(uint64_t numberOfElements);
+documentSchema createSchema(size_t elementNumber);
 
 /* Функция для добавления нового (INDEX_NEW) индекса в файл. Возвращает indexNumber из заголовка при неудаче */
 uint64_t createIndex(zgdbFile* file);
 
-/* Функция для добавления нового блока в файл. Возвращает false при неудаче */
+/* Функция для добавления нового документа в файл. Возвращает false при неудаче */
 bool createDocument(zgdbFile* file, documentSchema* schema);
 
 #endif
