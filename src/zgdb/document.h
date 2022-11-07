@@ -1,5 +1,5 @@
-#ifndef _BLOCK_H_
-#define _BLOCK_H_
+#ifndef _DOCUMENT_H_
+#define _DOCUMENT_H_
 
 #include <stdbool.h>
 #include "format.h"
@@ -32,7 +32,7 @@ typedef enum elementType {
 /* Терминаторы в документе */
 typedef enum terminator {
 	NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в документе
-	DOCUMENT_TERMINATOR = 0xFF, // терминатор для определения границ блоков
+	DOCUMENT_TERMINATOR = 0xFF, // терминатор для определения границ документов
 	EMBEDDED_DOCUMENT_TERMINATOR = 0xFE // терминатор для вложенного документа
 } terminator;
 
@@ -81,7 +81,7 @@ bool addStringToSchema(documentSchema* schema, unsigned char* key, string* value
 
 bool addDocumentToSchema(documentSchema* schema, unsigned char* key, document* value);
 
-/* Функция для инициализации схема с определнным количеством элементов */
+/* Функция для инициализации схемы с определнным количеством элементов */
 documentSchema createSchema(size_t elementNumber);
 
 /* Функция для добавления нового (INDEX_NEW) индекса в файл. Возвращает indexNumber из заголовка при неудаче */
