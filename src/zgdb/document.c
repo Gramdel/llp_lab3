@@ -18,7 +18,8 @@ void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
             for (int i = 0; i < schema->elementNumber; i++) {
-                if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) && schema->elements[i].documentValue) {
+                if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
+                    schema->elements[i].documentValue) {
                     free(schema->elements[i].documentValue);
                 }
             }
@@ -30,11 +31,13 @@ void destroySchema(documentSchema* schema) {
 
 bool addElementToSchema(documentSchema* schema, element* el) {
     if (schema->elementNumber == schema->capacity) {
-        schema->elements = realloc(schema->elements, sizeof(element) * (++schema->capacity));
-        if (!schema->elements) {
+        element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
+        if (!newElements) {
             free(el);
             return false;
         }
+        memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
+        schema->elements = newElements;
     }
     schema->elements[schema->elementNumber++] = *el;
     free(el);
