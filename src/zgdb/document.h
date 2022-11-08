@@ -88,9 +88,6 @@ documentSchema* createSchema(size_t capacity);
 /* Функция для уничтожения схемы */
 void destroySchema(documentSchema* schema);
 
-/* Функция для добавления нового (INDEX_NEW) индекса в файл. Возвращает indexNumber из заголовка при неудаче */
-uint64_t createIndex(zgdbFile* file);
-
 /* Функция для добавления нового документа в файл. Возвращает false при неудаче */
 bool createDocument(zgdbFile* file, documentSchema* schema);
 

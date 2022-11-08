@@ -1,5 +1,6 @@
 ﻿#include <stdio.h>
 #include "zgdb/document.h"
+#include "zgdb/format.h"
 
 int main(int argc, char** argv) {
     documentSchema* schema = createSchema(2);
@@ -13,5 +14,16 @@ int main(int argc, char** argv) {
         }
     }
     destroySchema(schema);
+
+    zgdbFile* file = loadFile("test");
+    if (!file) {
+        file = createFile("test");
+        if (!file) {
+            printf("Error\n");
+        }
+    }
+    printf("%d\n", file->header->indexNumber);
+    closeFile(file);
+
     return 0;
 }
