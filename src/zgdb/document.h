@@ -4,90 +4,94 @@
 #include <stdbool.h>
 #include "format.h"
 
-/* Структура для id, привязанного к документу (здесь и далее блок == документ). Для вложенных - id нулевой */
-typedef struct __attribute__((packed)) documentId {
-	uint32_t timestamp; // время создания документа в секундах с эпохи UNIX
-	uint64_t offset; // смещение документа относительно начала файла на момент создания документа
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ id, РїСЂРёРІСЏР·Р°РЅРЅРѕРіРѕ Рє РґРѕРєСѓРјРµРЅС‚Сѓ (Р·РґРµСЃСЊ Рё РґР°Р»РµРµ Р±Р»РѕРє == РґРѕРєСѓРјРµРЅС‚). Р”Р»СЏ РІР»РѕР¶РµРЅРЅС‹С… - id РЅСѓР»РµРІРѕР№ */
+typedef struct __attribute__((packed)) {
+    uint32_t timestamp; // РІСЂРµРјСЏ СЃРѕР·РґР°РЅРёСЏ РґРѕРєСѓРјРµРЅС‚Р° РІ СЃРµРєСѓРЅРґР°С… СЃ СЌРїРѕС…Рё UNIX
+    uint64_t offset; // СЃРјРµС‰РµРЅРёРµ РґРѕРєСѓРјРµРЅС‚Р° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РЅР°С‡Р°Р»Р° С„Р°Р№Р»Р° РЅР° РјРѕРјРµРЅС‚ СЃРѕР·РґР°РЅРёСЏ РґРѕРєСѓРјРµРЅС‚Р°
 } documentId;
 
-/* Структура для заголовка документа */
-typedef struct __attribute__((packed)) documentHeader {
-	uint64_t size : 40; // (5 байт) размер документа в байтах
-	union {
-		uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
-		uint64_t internalOffset : 40; // (5 байт) смещение вложенного документа относительного родительского
-	};
-	documentId id; // id, привязанный к документу
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ Р·Р°РіРѕР»РѕРІРєР° РґРѕРєСѓРјРµРЅС‚Р° */
+typedef struct __attribute__((packed)) {
+    uint64_t size : 40; // (5 Р±Р°Р№С‚) СЂР°Р·РјРµСЂ РґРѕРєСѓРјРµРЅС‚Р° РІ Р±Р°Р№С‚Р°С…
+    union {
+        uint64_t indexOrder : 40; // (5 Р±Р°Р№С‚) РїРѕСЂСЏРґРєРѕРІС‹Р№ РЅРѕРјРµСЂ РёРЅРґРµРєСЃР°, РїСЂРёРєСЂРµРїР»РµРЅРЅРѕРіРѕ Рє РґРѕРєСѓРјРµРЅС‚Сѓ
+        uint64_t internalOffset : 40; // (5 Р±Р°Р№С‚) СЃРјРµС‰РµРЅРёРµ РІР»РѕР¶РµРЅРЅРѕРіРѕ РґРѕРєСѓРјРµРЅС‚Р° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕРіРѕ СЂРѕРґРёС‚РµР»СЊСЃРєРѕРіРѕ
+    };
+    documentId id; // id, РїСЂРёРІСЏР·Р°РЅРЅС‹Р№ Рє РґРѕРєСѓРјРµРЅС‚Сѓ
 } documentHeader;
 
-/* Идентификаторы для типов данных в документе */
-typedef enum elementType {
-	TYPE_INT = 0x01, // для int32_t
-	TYPE_DOUBLE = 0x02, // для double
-	TYPE_BOOLEAN = 0x03, // для boolean (uint8_t)
-	TYPE_STRING = 0x04, // для строки
-	TYPE_EMBEDDED_DOCUMENT = 0x05 // для вложенного документа
+/* РРґРµРЅС‚РёС„РёРєР°С‚РѕСЂС‹ РґР»СЏ С‚РёРїРѕРІ РґР°РЅРЅС‹С… РІ РґРѕРєСѓРјРµРЅС‚Рµ */
+typedef enum {
+    TYPE_INT = 0x01, // РґР»СЏ int32_t
+    TYPE_DOUBLE = 0x02, // РґР»СЏ double
+    TYPE_BOOLEAN = 0x03, // РґР»СЏ boolean (uint8_t)
+    TYPE_STRING = 0x04, // РґР»СЏ СЃС‚СЂРѕРєРё
+    TYPE_EMBEDDED_DOCUMENT = 0x05 // РґР»СЏ РІР»РѕР¶РµРЅРЅРѕРіРѕ РґРѕРєСѓРјРµРЅС‚Р°
 } elementType;
 
-/* Терминаторы в документе */
-typedef enum terminator {
-	NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в документе
-	DOCUMENT_TERMINATOR = 0xFF, // терминатор для определения границ документов
-	EMBEDDED_DOCUMENT_TERMINATOR = 0xFE // терминатор для вложенного документа
+/* РўРµСЂРјРёРЅР°С‚РѕСЂС‹ РІ РґРѕРєСѓРјРµРЅС‚Рµ */
+typedef enum {
+    NULL_TERMINATOR = 0x00, // С‚РµСЂРјРёРЅР°С‚РѕСЂ РґР»СЏ СЃС‚СЂРѕРє Рё РєР»СЋС‡РµР№ РІ РґРѕРєСѓРјРµРЅС‚Рµ
+    DOCUMENT_TERMINATOR = 0xFF, // С‚РµСЂРјРёРЅР°С‚РѕСЂ РґР»СЏ РѕРїСЂРµРґРµР»РµРЅРёСЏ РіСЂР°РЅРёС† РґРѕРєСѓРјРµРЅС‚РѕРІ
+    EMBEDDED_DOCUMENT_TERMINATOR = 0xFE // С‚РµСЂРјРёРЅР°С‚РѕСЂ РґР»СЏ РІР»РѕР¶РµРЅРЅРѕРіРѕ РґРѕРєСѓРјРµРЅС‚Р°
 } terminator;
 
-/* Структура для строки */
-typedef struct string {
-	uint32_t size;
-	unsigned char* data;
-} string;
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ СЃС‚СЂРѕРєРё */
+typedef struct {
+    uint32_t size;
+    unsigned char* data;
+} str;
 
 typedef struct document document;
 
-/* Структура для элемента документа */
-typedef struct element {
-	uint8_t type; // тип элемента
-	unsigned char key[13]; // ключ элемента
-	union {
-		int32_t integerValue;
-		double doubleValue;
-		uint8_t booleanValue;
-		string* stringValue; // указатель на строку
-		document* documentValue; // указатель на вложенный документ
-	};
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ СЌР»РµРјРµРЅС‚Р° РґРѕРєСѓРјРµРЅС‚Р° */
+typedef struct {
+    uint8_t type; // С‚РёРї СЌР»РµРјРµРЅС‚Р°
+    char key[13]; // РєР»СЋС‡ СЌР»РµРјРµРЅС‚Р°
+    union {
+        int32_t integerValue;
+        double doubleValue;
+        uint8_t booleanValue;
+        str* stringValue; // СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЃС‚СЂРѕРєСѓ
+        document* documentValue; // СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РІР»РѕР¶РµРЅРЅС‹Р№ РґРѕРєСѓРјРµРЅС‚
+    };
 } element;
 
-/* Структура для документа (документа) */
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ РґРѕРєСѓРјРµРЅС‚Р° (РґРѕРєСѓРјРµРЅС‚Р°) */
 typedef struct document {
-	documentHeader header;
-	element* elements;
-	size_t elementNumber;
+    documentHeader header;
+    element* elements;
+    size_t elementNumber;
 } document;
 
-/* Структура для схемы данных */
-typedef struct documentSchema {
-	element* elements;
-	size_t elementNumber;
+/* РЎС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ СЃС…РµРјС‹ РґР°РЅРЅС‹С… */
+typedef struct {
+    element* elements;
+    size_t elementNumber;
+    size_t capacity;
 } documentSchema;
 
-/* Функции для добавления данных в схему. Возвращают false при неудаче */
-bool addIntegerToSchema(documentSchema* schema, unsigned char* key, int32_t value);
+/* Р¤СѓРЅРєС†РёРё РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ РґР°РЅРЅС‹С… РІ СЃС…РµРјСѓ. Р’РѕР·РІСЂР°С‰Р°СЋС‚ false РїСЂРё РЅРµСѓРґР°С‡Рµ */
+bool addIntegerToSchema(documentSchema* schema, const char* key, int32_t value);
 
-bool addDoubleToSchema(documentSchema* schema, unsigned char* key, double value);
+bool addDoubleToSchema(documentSchema* schema, const char* key, double value);
 
-bool addBooleanToSchema(documentSchema* schema, unsigned char* key, uint8_t value);
+bool addBooleanToSchema(documentSchema* schema, const char* key, uint8_t value);
 
-bool addStringToSchema(documentSchema* schema, unsigned char* key, string* value);
+bool addStringToSchema(documentSchema* schema, const char* key, str* value);
 
-bool addDocumentToSchema(documentSchema* schema, unsigned char* key, document* value);
+bool addDocumentToSchema(documentSchema* schema, const char* key, document* value);
 
-/* Функция для инициализации схемы с определнным количеством элементов */
-documentSchema createSchema(size_t elementNumber);
+/* Р¤СѓРЅРєС†РёСЏ РґР»СЏ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё СЃС…РµРјС‹ СЃ РѕРїСЂРµРґРµР»РµРЅРЅС‹Рј РЅР°С‡Р°Р»СЊРЅС‹Рј СЂР°Р·РјРµСЂРѕРј. */
+documentSchema* createSchema(size_t capacity);
 
-/* Функция для добавления нового (INDEX_NEW) индекса в файл. Возвращает indexNumber из заголовка при неудаче */
+/* Р¤СѓРЅРєС†РёСЏ РґР»СЏ СѓРЅРёС‡С‚РѕР¶РµРЅРёСЏ СЃС…РµРјС‹ */
+void destroySchema(documentSchema* schema);
+
+/* Р¤СѓРЅРєС†РёСЏ РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ РЅРѕРІРѕРіРѕ (INDEX_NEW) РёРЅРґРµРєСЃР° РІ С„Р°Р№Р». Р’РѕР·РІСЂР°С‰Р°РµС‚ indexNumber РёР· Р·Р°РіРѕР»РѕРІРєР° РїСЂРё РЅРµСѓРґР°С‡Рµ */
 uint64_t createIndex(zgdbFile* file);
 
-/* Функция для добавления нового документа в файл. Возвращает false при неудаче */
+/* Р¤СѓРЅРєС†РёСЏ РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ РЅРѕРІРѕРіРѕ РґРѕРєСѓРјРµРЅС‚Р° РІ С„Р°Р№Р». Р’РѕР·РІСЂР°С‰Р°РµС‚ false РїСЂРё РЅРµСѓРґР°С‡Рµ */
 bool createDocument(zgdbFile* file, documentSchema* schema);
 
 #endif
