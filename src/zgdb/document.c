@@ -37,6 +37,13 @@ bool addElementToSchema(documentSchema* schema, element* el) {
             return false;
         }
         memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
+        for (int i = 0; i < schema->elementNumber; i++) {
+            if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
+                schema->elements[i].documentValue) {
+                free(schema->elements[i].documentValue);
+            }
+        }
+        free(schema->elements);
         schema->elements = newElements;
     }
     schema->elements[schema->elementNumber++] = *el;
