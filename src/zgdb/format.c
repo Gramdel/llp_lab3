@@ -41,6 +41,35 @@ size_t writeIndexes(zgdbFile* file, size_t count) {
     return written;
 }
 
+zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
+    zgdbIndex* index = malloc(sizeof(zgdbIndex));
+    if (index) {
+        fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
+        for (int j = 0; j < i; j++) {
+            fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
+        }
+        fread(index, sizeof(zgdbIndex), 1, file->f);
+    }
+    return index;
+}
+
+bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
+    fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
+    for (int j = 0; j < i; j++) {
+        fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
+    }
+    size_t written = 0;
+    if (flag) {
+        written += fwrite(flag, sizeof(uint8_t), 1, file->f);
+    } else {
+        fseek(file->f, sizeof(uint8_t), SEEK_CUR);
+    }
+    if (offset) {
+        written += fwrite(offset, sizeof(uint64_t), 1, file->f);
+    }
+    return ((flag == NULL) == (offset == NULL)) ? (written == 2) : (written == 1); // XOR, оба NULL - проверка на 2, один NULL - на 1
+}
+
 zgdbFile* loadFile(const char* filename) {
     zgdbFile* file = malloc(sizeof(zgdbFile));
     if (file) {

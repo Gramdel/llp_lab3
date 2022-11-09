@@ -1,4 +1,5 @@
 ﻿#include <stdio.h>
+#include <malloc.h>
 #include "zgdb/document.h"
 #include "zgdb/format.h"
 
@@ -22,7 +23,13 @@ int main(int argc, char** argv) {
             printf("Error\n");
         }
     }
-    printf("%d\n", file->header->indexNumber);
+
+    uint8_t flag = INDEX_ALIVE;
+    uint64_t offset = 0xBBBBBBBBBBBBBBBB;
+    updateIndex(file, 4, &flag, &offset);
+    zgdbIndex* index = getIndex(file, 4);
+    free(index);
+    printf("%08X\n", file->header->fileType);
     closeFile(file);
 
     return 0;

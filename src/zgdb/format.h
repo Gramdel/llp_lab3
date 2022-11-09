@@ -14,7 +14,7 @@ typedef struct __attribute__((packed)) {
 
 /* Структура для индекса в ZGDB файле */
 typedef struct __attribute__((packed)) {
-    uint8_t flags; // флаги (т.е. мета-информация об индексе)
+    uint8_t flag; // флаги (т.е. мета-информация об индексе)
     uint64_t offset; // смещение блока относительно начала файла
 } zgdbIndex;
 
@@ -49,10 +49,7 @@ size_t writeIndexes(zgdbFile* file, size_t count);
 /* Функция для получения индекса по его порядковому номеру. Возвращает null при неудаче */
 zgdbIndex* getIndex(zgdbFile* file, uint64_t i);
 
-/* Функция, помечающая индекс как INDEX_DEAD по его порядковому номеру. Возвращает false при неудаче */
-bool killIndex(zgdbFile* file, uint64_t i);
-
-/* Функция, меняющая offset в INDEX_ALIVE индексе. При неудаче возвращает false */
-bool changeOffset(zgdbFile* file, uint64_t order, uint64_t offset);
+/* Функция, меняющая флаг и offset в индексе по его порядковому номеру. Возвращает false при неудаче */
+bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset);
 
 #endif
