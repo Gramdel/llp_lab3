@@ -3,7 +3,7 @@
 project ("llp_lab1")
 
 # Add source to this project's executable.
-add_executable (llp_lab1 "src/main.c" "src/zgdb/format.c" "src/zgdb/format.h" "src/zgdb/document.h" "src/zgdb/document.c")
+add_executable (llp_lab1 "src/main.c" "src/zgdb/format.c" "src/zgdb/format.h" "src/zgdb/document.h" "src/zgdb/document.c" src/zgdb/list.c src/zgdb/list.h)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET llp_lab1 PROPERTY C_STANDARD 17)
