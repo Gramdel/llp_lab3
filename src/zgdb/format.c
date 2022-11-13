@@ -12,7 +12,7 @@ zgdbHeader* readHeader(FILE* f) {
     return header;
 }
 
-zgdbHeader* createHeader() {
+zgdbHeader* initHeader() {
     zgdbHeader* header = malloc(sizeof(zgdbHeader));
     if (header) {
         header->fileType = ZGDB_FILETYPE;
@@ -67,7 +67,8 @@ bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
     if (offset) {
         written += fwrite(offset, sizeof(uint64_t), 1, file->f);
     }
-    return ((flag == NULL) == (offset == NULL)) ? (written == 2) : (written == 1); // XOR, оба NULL - проверка на 2, один NULL - на 1
+    return ((flag == NULL) == (offset == NULL)) ? (written == 2) : (written ==
+                                                                    1); // XOR, оба NULL - проверка на 2, один NULL - на 1
 }
 
 zgdbFile* loadFile(const char* filename) {
@@ -75,17 +76,17 @@ zgdbFile* loadFile(const char* filename) {
     if (file) {
         file->f = fopen(filename, "r+b");
         if (file->f) {
-            if (!(file->header = readHeader(file->f))) {
+            if ((file->header = readHeader(file->f))) {
+                return file;
+            } else {
                 fclose(file->f);
                 free(file);
-                return NULL;
             }
         } else {
             free(file);
-            return NULL;
         }
     }
-    return file;
+    return NULL;
 }
 
 zgdbFile* createFile(const char* filename) {
@@ -93,25 +94,24 @@ zgdbFile* createFile(const char* filename) {
     if (file) {
         file->f = fopen(filename, "w+b");
         if (file->f) {
-            if ((file->header = createHeader())) {
+            if ((file->header = initHeader())) {
                 file->header->indexNumber += writeIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY);
-                if (file->header->indexNumber != ZGDB_DEFAULT_INDEX_CAPACITY || !writeHeader(file)) {
+                if (file->header->indexNumber == ZGDB_DEFAULT_INDEX_CAPACITY && writeHeader(file)) {
+                    return file;
+                } else {
                     fclose(file->f);
                     free(file->header);
                     free(file);
-                    return NULL;
                 }
             } else {
                 fclose(file->f);
                 free(file);
-                return NULL;
             }
         } else {
             free(file);
-            return NULL;
         }
     }
-    return file;
+    return NULL;
 }
 
 void closeFile(zgdbFile* file) {
@@ -124,4 +124,37 @@ void closeFile(zgdbFile* file) {
         }
         free(file);
     }
+}
+
+sortedList* createList(zgdbFile* file) {
+    sortedList* list = initList();
+    if (list) {
+        zgdbIndex* index = malloc(sizeof(zgdbIndex));
+        if (index) {
+            fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
+            //uint64_t pos = ftell(file->f);
+            for (int i = 0; i < file->header->indexNumber; i++) {
+                if (fread(index, sizeof(zgdbIndex), 1, file->f)) {
+                    // += sizeof(zgdbIndex);
+                    if (index->flag == INDEX_DEAD) {
+                        // TODO: Продумать логику перемещения на смещение блока и возврат обратно.
+                    } else if (index->flag == INDEX_NEW) {
+                        listNode* node = createNode(0, i);
+                        if (node) {
+                            insertNode(list, node);
+                        }
+                    }
+                } else {
+                    free(index);
+                    free(list);
+                    return NULL;
+                }
+            }
+            free(index);
+        } else {
+            free(list);
+            return NULL;
+        }
+    }
+    return list;
 }

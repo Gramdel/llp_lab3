@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "list.h"
+
 /* Структура для заголовка ZGDB файла */
 typedef struct __attribute__((packed)) {
     uint32_t fileType; // должны быть записаны 4 буквы в UTF-8: ZGDB
@@ -51,5 +53,8 @@ zgdbIndex* getIndex(zgdbFile* file, uint64_t i);
 
 /* Функция, меняющая флаг и offset в индексе по его порядковому номеру. Возвращает false при неудаче */
 bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset);
+
+/* Функция для создания отсортированного списка индексов свободных мест в файле */
+sortedList* createList(zgdbFile* file);
 
 #endif

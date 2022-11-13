@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
         }
     }
     destroySchema(schema);
+    */
 
     zgdbFile* file = loadFile("test");
     if (!file) {
@@ -25,29 +26,13 @@ int main(int argc, char** argv) {
             printf("Error\n");
         }
     }
-
-    uint8_t flag = INDEX_ALIVE;
-    uint64_t offset = 0xBBBBBBBBBBBBBBBB;
-    updateIndex(file, 4, &flag, &offset);
-    zgdbIndex* index = getIndex(file, 4);
-    free(index);
     printf("%08X\n", file->header->fileType);
-    closeFile(file);
-    */
 
-    sortedList* list = createList();
+    sortedList* list = createList(file);
     if (list) {
-        listNode* node1 = createNode(25, 0);
-        listNode* node2 = createNode(10, 1);
-        listNode* node3 = createNode(100, 2);
-        insertNode(list, node1);
-        insertNode(list, node2);
-        insertNode(list, node3);
-        popBack(list);
-        popFront(list);
-        popFront(list);
         destroyList(list);
     }
 
+    closeFile(file);
     return 0;
 }

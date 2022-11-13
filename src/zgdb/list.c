@@ -13,7 +13,7 @@ listNode* createNode(uint64_t size, uint64_t index) {
     return node;
 }
 
-sortedList* createList() {
+sortedList* initList() {
     sortedList* list = malloc(sizeof(sortedList));
     if (list) {
         list->front = NULL;
@@ -59,7 +59,7 @@ void insertNode(sortedList* list, listNode* node) {
     }
 }
 
-listNode* popFront(sortedList* list) {
+listNode* popFront(sortedList* list) { // TODO: может надо возвращать void? Номер индекса и размер мы достанем из списка и так.
     if (list) {
         if (list->front) {
             listNode* front = list->front;
@@ -75,7 +75,7 @@ listNode* popFront(sortedList* list) {
     return NULL;
 }
 
-listNode* popBack(sortedList* list) {
+listNode* popBack(sortedList* list) { // TODO: может надо возвращать void? Номер индекса и размер мы достанем из списка и так.
     if (list) {
         if (list->back) {
             listNode* back = list->back;
