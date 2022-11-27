@@ -42,6 +42,7 @@ size_t writeIndexes(zgdbFile* file, size_t count) {
 }
 
 zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
+    // TODO: проверка на то, что индекс не вышел за рамки
     zgdbIndex* index = malloc(sizeof(zgdbIndex));
     if (index) {
         fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
@@ -132,12 +133,24 @@ sortedList* createList(zgdbFile* file) {
         zgdbIndex* index = malloc(sizeof(zgdbIndex));
         if (index) {
             fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-            //uint64_t pos = ftell(file->f);
+            uint64_t offset = sizeof(zgdbHeader);
             for (int i = 0; i < file->header->indexNumber; i++) {
                 if (fread(index, sizeof(zgdbIndex), 1, file->f)) {
-                    // += sizeof(zgdbIndex);
+                    offset += sizeof(zgdbIndex);
                     if (index->flag == INDEX_DEAD) {
-                        // TODO: Продумать логику перемещения на смещение блока и возврат обратно.
+                        uint64_t size;
+                        fseeko64(file->f, index->offset, SEEK_CUR);
+                        if (fread(&size, 5, 1, file->f)) {
+                            listNode* node = createNode(size, i);
+                            if (node) {
+                                insertNode(list, node);
+                            }
+                            fseeko64(file->f, offset, SEEK_SET);
+                        } else {
+                            free(index);
+                            free(list);
+                            return NULL;
+                        }
                     } else if (index->flag == INDEX_NEW) {
                         listNode* node = createNode(0, i);
                         if (node) {

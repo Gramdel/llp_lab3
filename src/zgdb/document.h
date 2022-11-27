@@ -50,7 +50,7 @@ typedef struct __attribute__((packed)) {
 /* Структура для заголовка документа */
 typedef struct __attribute__((packed)) {
     uint64_t size : 40; // (5 байт) размер документа в байтах
-    union {
+    union __attribute__((packed)) {
         uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
         uint64_t internalOffset : 40; // (5 байт) смещение вложенного документа относительного родительского
     };
@@ -59,7 +59,7 @@ typedef struct __attribute__((packed)) {
 
 /* Структура для документа (документа) */
 typedef struct document {
-    documentHeader header;
+    documentHeader* header;
     element* elements;
     size_t elementNumber;
 } document;
@@ -89,6 +89,6 @@ documentSchema* createSchema(size_t capacity);
 void destroySchema(documentSchema* schema);
 
 /* Функция для добавления нового документа в файл. Возвращает false при неудаче */
-bool createDocument(zgdbFile* file, documentSchema* schema);
+bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
 
 #endif
