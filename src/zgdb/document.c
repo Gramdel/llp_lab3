@@ -1,3 +1,5 @@
+#define BUF_SIZE 1024
+
 #include <malloc.h>
 #include <string.h>
 #include "document.h"
@@ -17,6 +19,7 @@ documentSchema* createSchema(size_t capacity) {
 void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
+            // TODO: очистка вложенных документов (сейчас внутренности не чистятся!)
             for (int i = 0; i < schema->elementNumber; i++) {
                 if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
                     schema->elements[i].documentValue) {
@@ -37,6 +40,7 @@ bool addElementToSchema(documentSchema* schema, element* el) {
             return false;
         }
         memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
+        // TODO: опять же, если документ вложенный, он нормально не почистится!
         for (int i = 0; i < schema->elementNumber; i++) {
             if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
                 schema->elements[i].documentValue) {
@@ -62,14 +66,11 @@ bool addIntegerToSchema(documentSchema* schema, const char* key, int32_t value) 
     return false;
 }
 
-uint64_t calcDocumentSize(documentSchema* schema) {
-    printf("size of id = %d\n", sizeof(documentId));
+uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
     uint64_t size = sizeof(documentHeader);
-    printf("size = %d\n", size);
-    for (int i = 0; i < schema->elementNumber; i++) {
-        element el = schema->elements[i];
+    for (int i = 0; i < elementNumber; i++) {
         size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
-        printf("size = %d\n", size);
+        element el = elements[i];
         switch (el.type) {
             case TYPE_INT:
                 size += sizeof(int32_t);
@@ -84,10 +85,9 @@ uint64_t calcDocumentSize(documentSchema* schema) {
                 size += sizeof(unsigned char) * el.stringValue->size;
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
-                // TODO: дописать рекурсивный вызов записи документа
+                size += calcDocumentSize(elements[i].documentValue->elements, elements[i].documentValue->elementNumber);
                 break;
         }
-        printf("size = %d\n", size);
     }
     return size;
 }
@@ -110,6 +110,9 @@ bool writeElement(zgdbFile* file, element* el) {
             fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
+            for (int i = 0; i < el->documentValue->elementNumber; i++) {
+                writeElement(file, el->documentValue->elements + i);
+            }
             // TODO: дописать рекурсивный вызов записи документа
             break;
     }
@@ -120,8 +123,9 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     if (list->front) {
         documentHeader* header = malloc(sizeof(documentHeader));
         if (header) {
-            header->size = calcDocumentSize(schema);
+            header->size = calcDocumentSize(schema->elements, schema->elementNumber);
             uint8_t flag = INDEX_ALIVE;
+            // TODO: оптимизировать ветки (вынести что можно наружу?)
             if (list->front->size >= header->size) {
                 fseeko64(file->f, getIndex(file, list->front->index)->offset, SEEK_SET);
                 header->indexOrder = list->front->index;
@@ -153,5 +157,25 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     } else {
         // TODO: перемещение первого блока и выделение новых индексов
     }
-    return false;
+    return true;
+}
+
+bool moveFirstDocument(zgdbFile* file, sortedList* list) {
+
+    return true;
+}
+
+element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t i) {
+    zgdbIndex* index = getIndex(file, i);
+    uint8_t buf[BUF_SIZE];
+    size_t offsetInBuf;
+    uint8_t type; // тип элемента
+    char key[13];
+    if (index) {
+        fseeko64(file->f, index->offset, SEEK_SET);
+        fread(&buf, BUF_SIZE, 1, file->f);
+
+    }
+
+    return true;
 }
