@@ -15,6 +15,8 @@ int main(int argc, char** argv) {
     printf("%08X\n", file->header->fileType);
 
     sortedList* list = createList(file);
+
+    /*
     documentSchema* schema = createSchema(2);
     if (schema) {
         addIntegerToSchema(schema, "key1", 123);
@@ -26,11 +28,13 @@ int main(int argc, char** argv) {
         }
     }
     writeDocument(file, list, schema);
+    */
+    readElementFromDocument(file, "key3", 9);
 
     if (list) {
         destroyList(list);
     }
-    destroySchema(schema);
+    //destroySchema(schema);
 
     closeFile(file);
     return 0;

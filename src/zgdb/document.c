@@ -1,5 +1,3 @@
-#define BUF_SIZE 1024
-
 #include <malloc.h>
 #include <string.h>
 #include "document.h"
@@ -166,16 +164,43 @@ bool moveFirstDocument(zgdbFile* file, sortedList* list) {
 }
 
 element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t i) {
+    element* el = malloc(sizeof(element));
     zgdbIndex* index = getIndex(file, i);
-    uint8_t buf[BUF_SIZE];
-    size_t offsetInBuf;
-    uint8_t type; // тип элемента
-    char key[13];
     if (index) {
-        fseeko64(file->f, index->offset, SEEK_SET);
-        fread(&buf, BUF_SIZE, 1, file->f);
-
+        fseeko64(file->f, index->offset + sizeof(documentHeader), SEEK_SET);
+        bool matchFound;
+        do {
+            fread(&el->type, sizeof(uint8_t), 1, file->f);
+            fread(&el->key, sizeof(char), 13, file->f);
+            printf("%s\n", el->key);
+            matchFound = strcmp(el->key, neededKey) == 0;
+            switch (el->type) {
+                case TYPE_INT:
+                    fread(&el->integerValue, sizeof(int32_t), 1, file->f);
+                    break;
+                case TYPE_DOUBLE:
+                    fread(&el->doubleValue, sizeof(double), 1, file->f);
+                    break;
+                case TYPE_BOOLEAN:
+                    fread(&el->booleanValue, sizeof(uint8_t), 1, file->f);
+                    break;
+                case TYPE_STRING:
+                    if (matchFound) {
+                        el->stringValue = malloc(sizeof(str));
+                        fread(&el->stringValue->size, sizeof(uint32_t), 1, file->f);
+                        el->stringValue->data = malloc(sizeof(unsigned char) * (el->stringValue->size + 1));
+                        fread(&el->stringValue->data, sizeof(unsigned char), el->stringValue->size + 1, file->f);
+                    } else {
+                        fread(&el->integerValue, sizeof(uint32_t), 1, file->f);
+                        fseeko64(file->f, el->integerValue, SEEK_CUR);
+                    }
+                    break;
+                case TYPE_EMBEDDED_DOCUMENT:
+                    // TODO: дописать рекурсивный вызов чтения документа
+                    break;
+            }
+        } while (!matchFound);
+        free(index);
     }
-
-    return true;
+    return el;
 }

@@ -54,6 +54,7 @@ typedef struct __attribute__((packed)) {
         uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
         uint64_t internalOffset : 40; // (5 байт) смещение вложенного документа относительного родительского
     };
+    // TODO: какого хрена размер 16?
     documentId id; // id, привязанный к документу
 } documentHeader;
 
@@ -90,5 +91,8 @@ void destroySchema(documentSchema* schema);
 
 /* Функция для добавления нового документа в файл. Возвращает false при неудаче */
 bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
+
+/* Функция для чтения элемента из документа по ключу. Возвращает null при неудаче */
+element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t i);
 
 #endif
