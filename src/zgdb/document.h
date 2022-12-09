@@ -37,7 +37,7 @@ typedef struct {
         double doubleValue;
         uint8_t booleanValue;
         str* stringValue; // указатель на строку
-        document* documentValue; // указатель на вложенный документ
+        uint64_t documentValue : 40; // порядковый номер индекса, прикрепленного ко вложенному документу
     };
 } element;
 
@@ -50,10 +50,8 @@ typedef struct __attribute__((packed)) {
 /* Структура для заголовка документа */
 typedef struct __attribute__((packed)) {
     uint64_t size : 40; // (5 байт) размер документа в байтах
-    union __attribute__((packed)) {
-        uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
-        uint64_t internalOffset : 40; // (5 байт) смещение вложенного документа относительного родительского
-    };
+    uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
+    uint64_t parentIndexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к родительскому документу
     // TODO: какого хрена размер 16?
     documentId id; // id, привязанный к документу
 } documentHeader;
@@ -81,7 +79,7 @@ bool addBooleanToSchema(documentSchema* schema, const char* key, uint8_t value);
 
 bool addStringToSchema(documentSchema* schema, const char* key, str* value);
 
-bool addDocumentToSchema(documentSchema* schema, const char* key, document* value);
+bool addDocumentToSchema(documentSchema* schema, const char* key, uint64_t value);
 
 /* Функция для инициализации схемы с определенным начальным размером. */
 documentSchema* createSchema(size_t capacity);

@@ -17,11 +17,12 @@ documentSchema* createSchema(size_t capacity) {
 void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
-            // TODO: очистка вложенных документов (сейчас внутренности не чистятся!)
             for (int i = 0; i < schema->elementNumber; i++) {
-                if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
-                    schema->elements[i].documentValue) {
-                    free(schema->elements[i].documentValue);
+                if (schema->elements[i].type == TYPE_STRING && schema->elements[i].stringValue) {
+                    if (schema->elements[i].stringValue->data) {
+                        free(schema->elements[i].stringValue->data);
+                    }
+                    free(schema->elements[i].stringValue);
                 }
             }
             free(schema->elements);
@@ -38,13 +39,6 @@ bool addElementToSchema(documentSchema* schema, element* el) {
             return false;
         }
         memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
-        // TODO: опять же, если документ вложенный, он нормально не почистится!
-        for (int i = 0; i < schema->elementNumber; i++) {
-            if ((schema->elements[i].type == TYPE_EMBEDDED_DOCUMENT || schema->elements[i].type == TYPE_STRING) &&
-                schema->elements[i].documentValue) {
-                free(schema->elements[i].documentValue);
-            }
-        }
         free(schema->elements);
         schema->elements = newElements;
     }
@@ -83,7 +77,7 @@ uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
                 size += sizeof(unsigned char) * el.stringValue->size;
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
-                size += calcDocumentSize(elements[i].documentValue->elements, elements[i].documentValue->elementNumber);
+                size += 5; // uint64_t : 40 == 5 байт
                 break;
         }
     }
@@ -94,6 +88,7 @@ bool writeElement(zgdbFile* file, element* el) {
     // TODO: проверки
     fwrite(&el->type, sizeof(uint8_t), 1, file->f);
     fwrite(el->key, sizeof(char), 13, file->f);
+    uint64_t tmp; // для битового поля (documentValue)
     switch (el->type) {
         case TYPE_INT:
             fwrite(&el->integerValue, sizeof(int32_t), 1, file->f);
@@ -108,10 +103,8 @@ bool writeElement(zgdbFile* file, element* el) {
             fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            for (int i = 0; i < el->documentValue->elementNumber; i++) {
-                writeElement(file, el->documentValue->elements + i);
-            }
-            // TODO: дописать рекурсивный вызов записи документа
+            tmp = el->documentValue;
+            fwrite(&tmp, 5, 1, file->f); // uint64_t : 40 == 5 байт
             break;
     }
     return true;
