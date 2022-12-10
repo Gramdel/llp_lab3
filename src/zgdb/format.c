@@ -16,7 +16,7 @@ zgdbHeader* initHeader() {
     zgdbHeader* header = malloc(sizeof(zgdbHeader));
     if (header) {
         header->fileType = ZGDB_FILETYPE;
-        header->freeListOffset = 0;
+        header->firstDocumentOffset = 0;
         header->indexNumber = 0;
     }
     return header;
@@ -42,20 +42,22 @@ size_t writeIndexes(zgdbFile* file, size_t count) {
 }
 
 zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
-    // TODO: проверка на то, что индекс не вышел за рамки
-    zgdbIndex* index = malloc(sizeof(zgdbIndex));
-    if (index) {
-        fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-        for (int j = 0; j < i; j++) {
-            fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
+    if (i < file->header->indexNumber) {
+        zgdbIndex* index = malloc(sizeof(zgdbIndex));
+        if (index) {
+            fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
+            for (int j = 0; j < i; j++) {
+                fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
+            }
+            fread(index, sizeof(zgdbIndex), 1, file->f);
         }
-        fread(index, sizeof(zgdbIndex), 1, file->f);
+        return index;
     }
-    return index;
+    return NULL;
 }
 
 bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
-    uint64_t pos = ftello64(file->f);
+    int64_t pos = ftello64(file->f); // TODO: может быть это и не нужно
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
     for (int j = 0; j < i; j++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
@@ -129,17 +131,19 @@ void closeFile(zgdbFile* file) {
     }
 }
 
+// TODO: подчистить функцию
 sortedList* createList(zgdbFile* file) {
     sortedList* list = initList();
     if (list) {
         zgdbIndex* index = malloc(sizeof(zgdbIndex));
         if (index) {
             fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-            uint64_t offset = sizeof(zgdbHeader);
+            int64_t offset = sizeof(zgdbHeader);
             for (int i = 0; i < file->header->indexNumber; i++) {
                 if (fread(index, sizeof(zgdbIndex), 1, file->f)) {
                     offset += sizeof(zgdbIndex);
                     if (index->flag == INDEX_DEAD) {
+                        // TODO: проверить, что это работает
                         uint64_t size;
                         fseeko64(file->f, index->offset, SEEK_CUR);
                         if (fread(&size, 5, 1, file->f)) {

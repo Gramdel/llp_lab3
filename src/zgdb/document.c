@@ -1,5 +1,8 @@
+#define NO_PARENT 0xFFFFFFFFFF // максимальный номер индекса - (2^40-1), поэтому 2^40 можно использовать как флаг
+
 #include <malloc.h>
 #include <string.h>
+#include <time.h>
 #include "document.h"
 
 documentSchema* createSchema(size_t capacity) {
@@ -114,35 +117,35 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     if (list->front) {
         documentHeader* header = malloc(sizeof(documentHeader));
         if (header) {
+            bool updateOffsetInIndex = false;
             header->size = calcDocumentSize(schema->elements, schema->elementNumber);
-            uint8_t flag = INDEX_ALIVE;
-            // TODO: оптимизировать ветки (вынести что можно наружу?)
+            header->parentIndexOrder = NO_PARENT; // указывает на то, что родителя нет
             if (list->front->size >= header->size) {
-                fseeko64(file->f, getIndex(file, list->front->index)->offset, SEEK_SET);
+                header->id.offset = getIndex(file, list->front->index)->offset;
+                fseeko64(file->f, header->id.offset, SEEK_SET);
                 header->indexOrder = list->front->index;
-                updateIndex(file, list->front->index, &flag, NULL);
                 popFront(list);
-            } else if (list->back->size >= header->size) {
-                fseeko64(file->f, getIndex(file, list->back->index)->offset, SEEK_SET);
-                header->indexOrder = list->back->index;
-                updateIndex(file, list->back->index, &flag, NULL);
-                popBack(list);
             } else if (list->back->size == 0) {
                 fseeko64(file->f, 0, SEEK_END);
-                uint64_t offset = ftello64(file->f);
+                header->id.offset = ftello64(file->f);
                 header->indexOrder = list->back->index;
-                updateIndex(file, list->back->index, &flag, &offset);
                 popBack(list);
+                updateOffsetInIndex = true;
             } else {
-                // TODO: перемещение первого блока и выделение новых индексов
+                // TODO: перемещение первого блока и выделение новых индексов. Не забыть о том, что при перемещении
+                //  на место бывшего блока, нужно подменить его (поменять местами offset)
             }
 
-            // TODO: добавить в header id
+            header->id.timestamp = (uint32_t) time(NULL);
             if (fwrite(header, sizeof(documentHeader), 1, file->f)) {
                 for (int i = 0; i < schema->elementNumber; i++) {
                     writeElement(file, schema->elements + i);
                 }
             }
+
+            uint8_t flag = INDEX_ALIVE;
+            uint64_t offset = header->id.offset;
+            updateIndex(file, header->indexOrder, &flag, updateOffsetInIndex ? &offset : NULL);
             free(header);
         }
     } else {
@@ -156,16 +159,17 @@ bool moveFirstDocument(zgdbFile* file, sortedList* list) {
     return true;
 }
 
-element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t i) {
+element* readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
     element* el = malloc(sizeof(element));
     zgdbIndex* index = getIndex(file, i);
     if (index) {
-        fseeko64(file->f, index->offset + sizeof(documentHeader), SEEK_SET);
+        fseeko64(file->f, index->offset, SEEK_SET); // спуск в документ по смещению
+        fseek(file->f, sizeof(documentHeader), SEEK_CUR); // TODO: может нужен fread?
         bool matchFound;
         do {
             fread(&el->type, sizeof(uint8_t), 1, file->f);
             fread(&el->key, sizeof(char), 13, file->f);
-            printf("%s\n", el->key);
+            uint64_t tmp; // для битового поля (documentValue)
             matchFound = strcmp(el->key, neededKey) == 0;
             switch (el->type) {
                 case TYPE_INT:
@@ -189,7 +193,8 @@ element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t
                     }
                     break;
                 case TYPE_EMBEDDED_DOCUMENT:
-                    // TODO: дописать рекурсивный вызов чтения документа
+                    fread(&tmp, 5, 1, file->f); // uint64_t : 40 == 5 байт
+                    el->documentValue = tmp;
                     break;
             }
         } while (!matchFound);

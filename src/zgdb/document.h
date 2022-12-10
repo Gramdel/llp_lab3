@@ -13,6 +13,7 @@ typedef enum {
     TYPE_EMBEDDED_DOCUMENT = 0x05 // для вложенного документа
 } elementType;
 
+// TODO: нужны ли вообще терминаторы?
 /* Терминаторы в документе */
 typedef enum {
     NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в документе
@@ -26,8 +27,6 @@ typedef struct {
     unsigned char* data;
 } str;
 
-typedef struct document document;
-
 /* Структура для элемента документа */
 typedef struct {
     uint8_t type; // тип элемента
@@ -37,14 +36,14 @@ typedef struct {
         double doubleValue;
         uint8_t booleanValue;
         str* stringValue; // указатель на строку
-        uint64_t documentValue : 40; // порядковый номер индекса, прикрепленного ко вложенному документу
+        uint64_t documentValue : 40; // (5 байт) порядковый номер индекса, прикрепленного ко вложенному документу
     };
 } element;
 
 /* Структура для id, привязанного к документу. Для вложенных - id нулевой */
 typedef struct __attribute__((packed)) {
     uint32_t timestamp; // время создания документа в секундах с эпохи UNIX
-    uint64_t offset; // смещение документа относительно начала файла на момент создания документа
+    int64_t offset; // смещение документа относительно начала файла на момент создания документа
 } documentId;
 
 /* Структура для заголовка документа */
@@ -52,10 +51,10 @@ typedef struct __attribute__((packed)) {
     uint64_t size : 40; // (5 байт) размер документа в байтах
     uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
     uint64_t parentIndexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к родительскому документу
-    // TODO: какого хрена размер 16?
     documentId id; // id, привязанный к документу
 } documentHeader;
 
+// TODO: не используется! Надо что-то сделать...
 /* Структура для документа (документа) */
 typedef struct document {
     documentHeader* header;
@@ -91,6 +90,6 @@ void destroySchema(documentSchema* schema);
 bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
 
 /* Функция для чтения элемента из документа по ключу. Возвращает null при неудаче */
-element* readElementFromDocument(zgdbFile* file, const char* neededKey, uint64_t i);
+element* readElement(zgdbFile* file, const char* neededKey, uint64_t i);
 
 #endif

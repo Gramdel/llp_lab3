@@ -38,7 +38,7 @@ void insertNode(sortedList* list, listNode* node) {
     if (list->front) {
         listNode* curr = list->front;
         while (curr) {
-            if (node->size > curr->size) {
+            if ((node->size > curr->size) || (node->size == 0 && curr->size == 0)) {
                 node->next = curr;
                 curr->prev = node;
                 if (curr == list->front) {
