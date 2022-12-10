@@ -1,6 +1,3 @@
-#define ZGDB_FILETYPE 0x4244475A
-#define ZGDB_DEFAULT_INDEX_CAPACITY 10
-
 #include <malloc.h>
 #include "format.h"
 
@@ -27,9 +24,8 @@ bool writeHeader(zgdbFile* file) {
     return fwrite(file->header, sizeof(zgdbHeader), 1, file->f);
 }
 
-size_t writeIndexes(zgdbFile* file, size_t count) {
+size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list) {
     zgdbIndex index = { INDEX_NEW, 0 };
-    //zgdbIndex index = { INDEX_ALIVE, 0 };
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
     for (int i = 0; i < file->header->indexNumber; i++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
@@ -37,6 +33,7 @@ size_t writeIndexes(zgdbFile* file, size_t count) {
     size_t written = 0;
     for (int i = 0; i < count; i++) {
         written += fwrite(&index, sizeof(zgdbIndex), 1, file->f);
+        insertNode(list, createNode(0, file->header->indexNumber++));
     }
     return written;
 }
@@ -57,6 +54,7 @@ zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
 }
 
 bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
+    // TODO: упростить, передав сюда индекс, причем по значению!
     int64_t pos = ftello64(file->f); // TODO: может быть это и не нужно
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
     for (int j = 0; j < i; j++) {
@@ -75,7 +73,7 @@ bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
     return ((flag == NULL) == (offset == NULL)) ? (written == 2) : (written ==
                                                                     1); // XOR, оба NULL - проверка на 2, один NULL - на 1
 }
-
+// TODO: добавить внутрь загрузку списка индексов
 zgdbFile* loadFile(const char* filename) {
     zgdbFile* file = malloc(sizeof(zgdbFile));
     if (file) {
@@ -94,13 +92,13 @@ zgdbFile* loadFile(const char* filename) {
     return NULL;
 }
 
-zgdbFile* createFile(const char* filename) {
+zgdbFile* createFile(const char* filename, sortedList* list) {
     zgdbFile* file = malloc(sizeof(zgdbFile));
     if (file) {
         file->f = fopen(filename, "w+b");
         if (file->f) {
             if ((file->header = initHeader())) {
-                file->header->indexNumber += writeIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY);
+                writeIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY, list);
                 if (file->header->indexNumber == ZGDB_DEFAULT_INDEX_CAPACITY && writeHeader(file)) {
                     return file;
                 } else {

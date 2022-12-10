@@ -5,16 +5,18 @@
 #include "zgdb/list.h"
 
 int main(int argc, char** argv) {
+    sortedList* list;
     zgdbFile* file = loadFile("test");
     if (!file) {
-        file = createFile("test");
+        list = initList();
+        file = createFile("test", list);
         if (!file) {
             printf("Error\n");
         }
+    } else {
+        list = createList(file);
     }
     printf("%08X\n", file->header->fileType);
-
-    sortedList* list = createList(file);
 
 
     documentSchema* schema = createSchema(2);

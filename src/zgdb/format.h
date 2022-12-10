@@ -1,6 +1,9 @@
 #ifndef _FORMAT_H_
 #define _FORMAT_H_
 
+#define ZGDB_FILETYPE 0x4244475A
+#define ZGDB_DEFAULT_INDEX_CAPACITY 10
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -36,8 +39,8 @@ typedef enum {
 /* Функция для загрузки существующего файла */
 zgdbFile* loadFile(const char* filename);
 
-/* Функция для создания нового файла */
-zgdbFile* createFile(const char* filename);
+/* Функция для создания нового файла. Также создает список свободных индексов */
+zgdbFile* createFile(const char* filename, sortedList* list);
 
 /* Функция для закрытия файла */
 void closeFile(zgdbFile* file);
@@ -46,7 +49,7 @@ void closeFile(zgdbFile* file);
 bool writeHeader(zgdbFile* file);
 
 /* Функция для записи новых (INDEX_NEW) индексов в файл. Возвращает количество записанных индексов */
-size_t writeIndexes(zgdbFile* file, size_t count);
+size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list);
 
 /* Функция для получения индекса по его порядковому номеру. Возвращает null при неудаче */
 zgdbIndex* getIndex(zgdbFile* file, uint64_t i);
