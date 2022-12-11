@@ -53,26 +53,25 @@ zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
     return NULL;
 }
 
-bool updateIndex(zgdbFile* file, uint64_t i, uint8_t* flag, uint64_t* offset) {
-    // TODO: упростить, передав сюда индекс, причем по значению!
-    int64_t pos = ftello64(file->f); // TODO: может быть это и не нужно
+bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset) {
+    int64_t pos = ftello64(file->f);
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
     for (int j = 0; j < i; j++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
     }
     size_t written = 0;
-    if (flag) {
-        written += fwrite(flag, sizeof(uint8_t), 1, file->f);
+    if (flag.isPresent) {
+        written += fwrite(&flag.value, sizeof(uint8_t), 1, file->f);
     } else {
         fseek(file->f, sizeof(uint8_t), SEEK_CUR);
     }
-    if (offset) {
-        written += fwrite(offset, sizeof(uint64_t), 1, file->f);
+    if (offset.isPresent) {
+        written += fwrite(&offset.value, sizeof(int64_t), 1, file->f);
     }
     fseeko64(file->f, pos, SEEK_SET);
-    return ((flag == NULL) == (offset == NULL)) ? (written == 2) : (written ==
-                                                                    1); // XOR, оба NULL - проверка на 2, один NULL - на 1
+    return (flag.isPresent == offset.isPresent) ? (written == 2) : (written == 1); // XOR
 }
+
 // TODO: добавить внутрь загрузку списка индексов
 zgdbFile* loadFile(const char* filename) {
     zgdbFile* file = malloc(sizeof(zgdbFile));

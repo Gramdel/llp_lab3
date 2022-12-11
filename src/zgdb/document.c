@@ -127,10 +127,7 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             listNode* node = popFront(list);
             node->size = 0;
             insertNode(list, node);
-
-            uint8_t flag = INDEX_NEW;
-            uint64_t offset = 0;
-            updateIndex(file, node->index, &flag, &offset);
+            updateIndex(file, node->index, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
 
             zgdbIndex* index = getIndex(file, node->index);
             fseeko64(file->f, index->offset, SEEK_SET);
@@ -140,7 +137,7 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             fseeko64(file->f, 0, SEEK_END);
         }
         int64_t newPos = ftello64(file->f);
-        updateIndex(file, header.indexOrder, NULL, (uint64_t*) &newPos); // обновляем offset в индексе переносимого документа
+        updateIndex(file, header.indexOrder, not_present_uint8_t(), wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
 
         fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
         newPos += sizeof(documentHeader);
@@ -234,9 +231,7 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
             }
         }
 
-        uint8_t flag = INDEX_ALIVE;
-        uint64_t offset = header->id.offset;
-        updateIndex(file, header->indexOrder, &flag, updateOffsetInIndex ? &offset : NULL);
+        updateIndex(file, header->indexOrder, wrap_uint8_t(INDEX_ALIVE), updateOffsetInIndex ? wrap_int64_t(header->id.offset) : not_present_int64_t());
         free(header);
     }
     return true;

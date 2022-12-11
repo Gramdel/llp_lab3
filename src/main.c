@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         addBooleanToSchema(schema3, "isFoo", true);
     }
 
-    writeDocument(file, list, schema1);
+    //writeDocument(file, list, schema1);
     writeDocument(file, list, schema2);
     writeDocument(file, list, schema3);
     writeDocument(file, list, schema2);
