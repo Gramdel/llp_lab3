@@ -19,28 +19,51 @@ int main(int argc, char** argv) {
     printf("%08X\n", file->header->fileType);
 
 
-    documentSchema* schema = createSchema(2);
-    if (schema) {
-        addIntegerToSchema(schema, "key1", 123);
-        addIntegerToSchema(schema, "key2", 456);
-        addIntegerToSchema(schema, "key3", 789);
-        for (int i = 0; i < schema->elementNumber; i++) {
-            printf("elements[%d]: key = %s, value = %d;\n", i, schema->elements[i].key,
-                   schema->elements[i].integerValue);
-        }
+    documentSchema* schema1 = createSchema(2);
+    if (schema1) {
+        addIntegerToSchema(schema1, "first1", 111);
+        addIntegerToSchema(schema1, "first2", 222);
+        addBooleanToSchema(schema1, "isFirst", true);
     }
-    writeDocument(file, list, schema);
-    writeDocument(file, list, schema);
-    writeDocument(file, list, schema);
 
-    readElement(file, "key3", 0);
-    readElement(file, "key2", 1);
-    readElement(file, "key1", 2);
+    documentSchema* schema2 = createSchema(2);
+    if (schema2) {
+        addIntegerToSchema(schema2, "key1", 123);
+        addIntegerToSchema(schema2, "key2", 456);
+        addIntegerToSchema(schema2, "key3", 789);
+    }
+
+    documentSchema* schema3 = createSchema(2);
+    if (schema3) {
+        addIntegerToSchema(schema3, "key1", 123);
+        addIntegerToSchema(schema3, "key2", 456);
+        addIntegerToSchema(schema3, "key3", 789);
+        addBooleanToSchema(schema3, "isFirst", false);
+        addBooleanToSchema(schema3, "isFoo", true);
+    }
+
+    writeDocument(file, list, schema1);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema3);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+    writeDocument(file, list, schema2);
+
+    writeDocument(file, list, schema2);
+
+    element* el = readElement(file, "first1", 0);
+    printf("%s\n", el->key);
 
     if (list) {
         destroyList(list);
     }
-    destroySchema(schema);
+    destroySchema(schema1);
+    destroySchema(schema2);
+    destroySchema(schema3);
 
     closeFile(file);
     return 0;

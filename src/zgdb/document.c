@@ -31,7 +31,7 @@ void destroySchema(documentSchema* schema) {
         free(schema);
     }
 }
-
+// TODO: может как-то упростить? switch?
 bool addElementToSchema(documentSchema* schema, element* el) {
     if (schema->elementNumber == schema->capacity) {
         element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
@@ -53,6 +53,19 @@ bool addIntegerToSchema(documentSchema* schema, const char* key, int32_t value) 
     if (el) {
         el->type = TYPE_INT;
         el->integerValue = value;
+        memset(el->key, 0, 13);
+        strcpy(el->key, key);
+        return addElementToSchema(schema, el);
+    }
+    return false;
+}
+
+bool addBooleanToSchema(documentSchema* schema, const char* key, uint8_t value) {
+    element* el = malloc(sizeof(element));
+    if (el) {
+        el->type = TYPE_BOOLEAN;
+        el->booleanValue = value;
+        memset(el->key, 0, 13);
         strcpy(el->key, key);
         return addElementToSchema(schema, el);
     }
@@ -85,24 +98,32 @@ uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
     return size;
 }
 
+// TODO: может возвращать void? Или нужны проверки
 bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
+    // Смещаемся к началу документов:
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
     for (int i = 0; i < file->header->indexNumber; i++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
     }
     fseek(file->f, file->header->firstDocumentOffset, SEEK_CUR);
 
-    int64_t availableSpace = file->header->firstDocumentOffset;
+    int64_t oldPos = ftello64(file->f); // сохраняем позицию, с которой начинается первый документ
     int64_t neededSpace = sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY;
-    int64_t oldPos, newPos;
-    uint8_t* buf;
-    uint64_t bufSize;
-    documentHeader header;
+    int64_t availableSpace = file->header->firstDocumentOffset; // перед первым документом могут быть неиспользуемые байты
     do {
+        documentHeader header;
         fread(&header, sizeof(documentHeader), 1, file->f);
-        availableSpace += header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
-        oldPos = ftello64(file->f);
-        if (list->front->size >= header.size) {
+        oldPos += sizeof(documentHeader);
+
+        /* Если есть подходящая дырка, делаем следующие операции:
+         * 1. Забираем node из списка
+         * 2. Добавляем node обратно, изменив size на 0
+         * 3. Делаем соответствующий индекс в файле INDEX_NEW
+         * 4. Сохраняем из node смещение (fseek + ftell)
+         * Таким образом, INDEX_DEAD превращается в INDEX_NEW, а его бывший offset будет прикреплен к индексу
+         * переносимого документа.
+         * Если подходящих дырок нет (или список пустой), то перемещаемся в конец файла, смещение также сохраняем. */
+        if (list->front && list->front->size >= header.size) {
             listNode* node = popFront(list);
             node->size = 0;
             insertNode(list, node);
@@ -118,11 +139,14 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
         } else {
             fseeko64(file->f, 0, SEEK_END);
         }
-        fwrite(&header, sizeof(documentHeader), 1, file->f);
-        newPos = ftello64(file->f);
+        int64_t newPos = ftello64(file->f);
+        updateIndex(file, header.indexOrder, NULL, (uint64_t*) &newPos); // обновляем offset в индексе переносимого документа
 
-        uint64_t bytesLeft = header.size - sizeof(documentHeader); // вычитаем хедер, поскольку он уже перенесён
+        fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
+        newPos += sizeof(documentHeader);
+        int64_t bytesLeft = header.size - sizeof(documentHeader);
         do {
+            int64_t bufSize;
             if (bytesLeft > DOCUMENT_BUF_SIZE) {
                 bufSize = DOCUMENT_BUF_SIZE;
             } else {
@@ -130,19 +154,21 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             }
             bytesLeft -= bufSize;
 
-            buf = malloc(bufSize);
+            uint8_t* buf = malloc(bufSize);
             fseeko64(file->f, oldPos, SEEK_SET);
-            fread(&buf, bufSize, 1, file->f);
-            oldPos = ftello64(file->f);
+            fread(buf, bufSize, 1, file->f);
+            oldPos += bufSize;
             fseeko64(file->f, newPos, SEEK_SET);
-            fwrite(&buf, bufSize, 1, file->f);
-            newPos = ftello64(file->f);
+            fwrite(buf, bufSize, 1, file->f);
+            newPos += bufSize;
             free(buf);
         } while (bytesLeft);
+        fseeko64(file->f, oldPos, SEEK_SET); // перед следующей итерацией нужно вернуться к началу
+        availableSpace += header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
     } while (availableSpace < neededSpace);
 
     writeIndexes(file, availableSpace / sizeof(zgdbIndex), list);
-    file->header->firstDocumentOffset = availableSpace % sizeof(zgdbIndex);
+    file->header->firstDocumentOffset = availableSpace % sizeof(zgdbIndex); // сохраняем остаток места
     writeHeader(file);
     return true;
 }
@@ -174,49 +200,44 @@ bool writeElement(zgdbFile* file, element* el) {
 }
 
 bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
-    if (list->front) {
-        documentHeader* header = malloc(sizeof(documentHeader));
-        if (header) {
-            bool updateOffsetInIndex = false;
-            header->size = calcDocumentSize(schema->elements, schema->elementNumber);
-            header->parentIndexOrder = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
-            if (list->front->size >= header->size) {
-                zgdbIndex* index = getIndex(file, list->front->index);
-                header->id.offset = index->offset;
-                fseeko64(file->f, header->id.offset, SEEK_SET);
-                header->indexOrder = list->front->index;
-                popFront(list);
-                free(index);
-            } else if (list->back->size == 0) {
-                fseeko64(file->f, 0, SEEK_END);
-                header->id.offset = ftello64(file->f);
-                header->indexOrder = list->back->index;
-                popBack(list);
-                updateOffsetInIndex = true;
-            } else {
+    if (!list->front) {
+        moveFirstDocuments(file, list);
+    }
+
+    documentHeader* header = malloc(sizeof(documentHeader));
+    if (header) {
+        bool updateOffsetInIndex = false;
+        header->size = calcDocumentSize(schema->elements, schema->elementNumber);
+        header->parentIndexOrder = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
+        if (list->front->size >= header->size) {
+            zgdbIndex* index = getIndex(file, list->front->index);
+            header->id.offset = index->offset;
+            fseeko64(file->f, header->id.offset, SEEK_SET);
+            header->indexOrder = list->front->index;
+            popFront(list);
+            free(index);
+        } else {
+            if (list->back->size != 0) {
                 moveFirstDocuments(file, list);
-                fseeko64(file->f, 0, SEEK_END);
-                header->id.offset = ftello64(file->f);
-                header->indexOrder = list->back->index;
-                popBack(list);
-                updateOffsetInIndex = true;
             }
-
-            header->id.timestamp = (uint32_t) time(NULL);
-            if (fwrite(header, sizeof(documentHeader), 1, file->f)) {
-                for (int i = 0; i < schema->elementNumber; i++) {
-                    writeElement(file, schema->elements + i);
-                }
-            }
-
-            uint8_t flag = INDEX_ALIVE;
-            uint64_t offset = header->id.offset;
-            updateIndex(file, header->indexOrder, &flag, updateOffsetInIndex ? &offset : NULL);
-            free(header);
+            fseeko64(file->f, 0, SEEK_END);
+            header->id.offset = ftello64(file->f);
+            header->indexOrder = list->back->index;
+            popBack(list);
+            updateOffsetInIndex = true;
         }
-    } else {
-        // TODO: перемещение первого блока и выделение новых индексов. Именно это место вызывается, когда список
-        //  становится пустым (а это как раз сейчас и происходит, после добавления 10 документа)
+
+        header->id.timestamp = (uint32_t) time(NULL);
+        if (fwrite(header, sizeof(documentHeader), 1, file->f)) {
+            for (int i = 0; i < schema->elementNumber; i++) {
+                writeElement(file, schema->elements + i);
+            }
+        }
+
+        uint8_t flag = INDEX_ALIVE;
+        uint64_t offset = header->id.offset;
+        updateIndex(file, header->indexOrder, &flag, updateOffsetInIndex ? &offset : NULL);
+        free(header);
     }
     return true;
 }
