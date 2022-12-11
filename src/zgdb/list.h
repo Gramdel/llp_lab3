@@ -7,7 +7,7 @@
 /* Структура для узла списка */
 typedef struct listNode {
     uint64_t size : 40; // размер документа
-    uint64_t index : 40; // номер индекса
+    uint64_t indexNumber : 40; // номер индекса
     struct listNode* prev; // указатель на предыдущий элемент списка
     struct listNode* next; // указатель на следующий элемент списка
 } listNode;
@@ -19,7 +19,7 @@ typedef struct sortedList {
 } sortedList;
 
 /* Функция для создания узла */
-listNode* createNode(uint64_t size, uint64_t index);
+listNode* createNode(uint64_t size, uint64_t indexNumber);
 
 /* Функция для инициализации списка */
 sortedList* initList();

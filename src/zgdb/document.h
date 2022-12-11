@@ -39,7 +39,7 @@ typedef struct {
         double doubleValue;
         uint8_t booleanValue;
         str* stringValue; // указатель на строку
-        uint64_t documentValue : 40; // (5 байт) порядковый номер индекса, прикрепленного ко вложенному документу
+        uint64_t documentValue : 40; // (5 байт) номер индекса, прикрепленного ко вложенному документу
     };
 } element;
 
@@ -52,8 +52,8 @@ typedef struct __attribute__((packed)) {
 /* Структура для заголовка документа */
 typedef struct __attribute__((packed)) {
     uint64_t size : 40; // (5 байт) размер документа в байтах
-    uint64_t indexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к документу
-    uint64_t parentIndexOrder : 40; // (5 байт) порядковый номер индекса, прикрепленного к родительскому документу
+    uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
+    uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу
     documentId id; // id, привязанный к документу
 } documentHeader;
 
@@ -62,13 +62,13 @@ typedef struct __attribute__((packed)) {
 typedef struct document {
     documentHeader* header;
     element* elements;
-    size_t elementNumber;
+    size_t elementCount;
 } document;
 
 /* Структура для схемы данных */
 typedef struct {
     element* elements;
-    size_t elementNumber;
+    size_t elementCount;
     size_t capacity;
 } documentSchema;
 
@@ -91,6 +91,9 @@ void destroySchema(documentSchema* schema);
 
 /* Функция для добавления нового документа в файл. Возвращает false при неудаче */
 bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
+
+/* Функция для удаления документа из файла. Возвращает false при неудаче */
+bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i);
 
 /* Функция для чтения элемента из документа по ключу. Возвращает null при неудаче */
 element* readElement(zgdbFile* file, const char* neededKey, uint64_t i);

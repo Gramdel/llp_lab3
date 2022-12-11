@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         addBooleanToSchema(schema3, "isFoo", true);
     }
 
-    //writeDocument(file, list, schema1);
+    writeDocument(file, list, schema1);
     writeDocument(file, list, schema2);
     writeDocument(file, list, schema3);
     writeDocument(file, list, schema2);
@@ -53,7 +53,8 @@ int main(int argc, char** argv) {
     writeDocument(file, list, schema2);
     writeDocument(file, list, schema2);
 
-    writeDocument(file, list, schema2);
+    removeDocument(file, list, 2);
+    writeDocument(file, list, schema1);
 
     element* el = readElement(file, "first1", 0);
     printf("%s\n", el->key);

@@ -15,7 +15,7 @@
 typedef struct __attribute__((packed)) {
     uint32_t fileType; // должны быть записаны 4 буквы в UTF-8: ZGDB
     uint8_t firstDocumentOffset; // смещение первого документа относительно конца индексов в файле, не больше 8!
-    uint64_t indexNumber : 40; // (5 байт) количество всех индексов файла
+    uint64_t indexCount : 40; // (5 байт) количество всех индексов файла
 } zgdbHeader;
 
 /* Структура для индекса в ZGDB файле */

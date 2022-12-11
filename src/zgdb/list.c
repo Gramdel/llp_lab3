@@ -2,11 +2,11 @@
 
 #include "list.h"
 
-listNode* createNode(uint64_t size, uint64_t index) {
+listNode* createNode(uint64_t size, uint64_t indexNumber) {
     listNode* node = malloc(sizeof(listNode));
     if (node) {
         node->size = size;
-        node->index = index;
+        node->indexNumber = indexNumber;
         node->prev = NULL;
         node->next = NULL;
     }

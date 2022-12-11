@@ -14,7 +14,7 @@ zgdbHeader* initHeader() {
     if (header) {
         header->fileType = ZGDB_FILETYPE;
         header->firstDocumentOffset = 0;
-        header->indexNumber = 0;
+        header->indexCount = 0;
     }
     return header;
 }
@@ -27,19 +27,19 @@ bool writeHeader(zgdbFile* file) {
 size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list) {
     zgdbIndex index = { INDEX_NEW, 0 };
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-    for (int i = 0; i < file->header->indexNumber; i++) {
+    for (int i = 0; i < file->header->indexCount; i++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
     }
     size_t written = 0;
     for (int i = 0; i < count; i++) {
         written += fwrite(&index, sizeof(zgdbIndex), 1, file->f);
-        insertNode(list, createNode(0, file->header->indexNumber++));
+        insertNode(list, createNode(0, file->header->indexCount++));
     }
     return written;
 }
 
 zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
-    if (i < file->header->indexNumber) {
+    if (i < file->header->indexCount) {
         zgdbIndex* index = malloc(sizeof(zgdbIndex));
         if (index) {
             fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
@@ -98,7 +98,7 @@ zgdbFile* createFile(const char* filename, sortedList* list) {
         if (file->f) {
             if ((file->header = initHeader())) {
                 writeIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY, list);
-                if (file->header->indexNumber == ZGDB_DEFAULT_INDEX_CAPACITY && writeHeader(file)) {
+                if (file->header->indexCount == ZGDB_DEFAULT_INDEX_CAPACITY && writeHeader(file)) {
                     return file;
                 } else {
                     fclose(file->f);
@@ -136,7 +136,7 @@ sortedList* createList(zgdbFile* file) {
         if (index) {
             fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
             int64_t offset = sizeof(zgdbHeader);
-            for (int i = 0; i < file->header->indexNumber; i++) {
+            for (int i = 0; i < file->header->indexCount; i++) {
                 if (fread(index, sizeof(zgdbIndex), 1, file->f)) {
                     offset += sizeof(zgdbIndex);
                     if (index->flag == INDEX_DEAD) {

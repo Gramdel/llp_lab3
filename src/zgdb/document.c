@@ -8,7 +8,7 @@ documentSchema* createSchema(size_t capacity) {
     if (schema) {
         schema->elements = malloc(sizeof(element) * capacity);
         if (schema->elements) {
-            schema->elementNumber = 0;
+            schema->elementCount = 0;
             schema->capacity = capacity;
         }
     }
@@ -18,7 +18,7 @@ documentSchema* createSchema(size_t capacity) {
 void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
-            for (int i = 0; i < schema->elementNumber; i++) {
+            for (int i = 0; i < schema->elementCount; i++) {
                 if (schema->elements[i].type == TYPE_STRING && schema->elements[i].stringValue) {
                     if (schema->elements[i].stringValue->data) {
                         free(schema->elements[i].stringValue->data);
@@ -33,7 +33,7 @@ void destroySchema(documentSchema* schema) {
 }
 // TODO: может как-то упростить? switch?
 bool addElementToSchema(documentSchema* schema, element* el) {
-    if (schema->elementNumber == schema->capacity) {
+    if (schema->elementCount == schema->capacity) {
         element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
         if (!newElements) {
             free(el);
@@ -43,7 +43,7 @@ bool addElementToSchema(documentSchema* schema, element* el) {
         free(schema->elements);
         schema->elements = newElements;
     }
-    schema->elements[schema->elementNumber++] = *el;
+    schema->elements[schema->elementCount++] = *el;
     free(el);
     return true;
 }
@@ -102,7 +102,7 @@ uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
 bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
     // Смещаемся к началу документов:
     fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-    for (int i = 0; i < file->header->indexNumber; i++) {
+    for (int i = 0; i < file->header->indexCount; i++) {
         fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
     }
     fseek(file->f, file->header->firstDocumentOffset, SEEK_CUR);
@@ -127,9 +127,9 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             listNode* node = popFront(list);
             node->size = 0;
             insertNode(list, node);
-            updateIndex(file, node->index, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
+            updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
 
-            zgdbIndex* index = getIndex(file, node->index);
+            zgdbIndex* index = getIndex(file, node->indexNumber);
             fseeko64(file->f, index->offset, SEEK_SET);
             free(index);
             free(node);
@@ -137,7 +137,7 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             fseeko64(file->f, 0, SEEK_END);
         }
         int64_t newPos = ftello64(file->f);
-        updateIndex(file, header.indexOrder, not_present_uint8_t(), wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
+        updateIndex(file, header.indexNumber, not_present_uint8_t(), wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
 
         fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
         newPos += sizeof(documentHeader);
@@ -204,13 +204,13 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     documentHeader* header = malloc(sizeof(documentHeader));
     if (header) {
         bool updateOffsetInIndex = false;
-        header->size = calcDocumentSize(schema->elements, schema->elementNumber);
-        header->parentIndexOrder = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
+        header->size = calcDocumentSize(schema->elements, schema->elementCount);
+        header->parentIndexNumber = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
         if (list->front->size >= header->size) {
-            zgdbIndex* index = getIndex(file, list->front->index);
+            zgdbIndex* index = getIndex(file, list->front->indexNumber);
             header->id.offset = index->offset;
             fseeko64(file->f, header->id.offset, SEEK_SET);
-            header->indexOrder = list->front->index;
+            header->indexNumber = list->front->indexNumber;
             popFront(list);
             free(index);
         } else {
@@ -219,21 +219,34 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
             }
             fseeko64(file->f, 0, SEEK_END);
             header->id.offset = ftello64(file->f);
-            header->indexOrder = list->back->index;
+            header->indexNumber = list->back->indexNumber;
             popBack(list);
             updateOffsetInIndex = true;
         }
 
         header->id.timestamp = (uint32_t) time(NULL);
         if (fwrite(header, sizeof(documentHeader), 1, file->f)) {
-            for (int i = 0; i < schema->elementNumber; i++) {
+            for (int i = 0; i < schema->elementCount; i++) {
                 writeElement(file, schema->elements + i);
             }
         }
 
-        updateIndex(file, header->indexOrder, wrap_uint8_t(INDEX_ALIVE), updateOffsetInIndex ? wrap_int64_t(header->id.offset) : not_present_int64_t());
+        updateIndex(file, header->indexNumber, wrap_uint8_t(INDEX_ALIVE), updateOffsetInIndex ? wrap_int64_t(header->id.offset) : not_present_int64_t());
         free(header);
     }
+    return true;
+}
+
+bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
+    // TODO: дописать кусок, удаляющий упоминания родителя в детях
+    zgdbIndex* index = getIndex(file, i);
+    updateIndex(file, i, wrap_uint8_t(INDEX_DEAD), not_present_int64_t());
+
+    fseeko64(file->f, index->offset, SEEK_SET);
+    uint64_t size;
+    fread(&size, 5, 1, file->f); // uint64_t : 40 == 5 байт
+    insertNode(list, createNode(size, i));
+    free(index);
     return true;
 }
 
