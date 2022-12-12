@@ -117,19 +117,27 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
 
         /* Если есть подходящая дырка, делаем следующие операции:
          * 1. Забираем node из списка
-         * 2. Добавляем node обратно, изменив size на 0
-         * 3. Делаем соответствующий индекс в файле INDEX_NEW
-         * 4. Сохраняем из node смещение (fseek + ftell)
+         * 2. Если найденная дырка больше, чем документ, создаём INDEX_DEAD для оставшейся части
+         * 3. Добавляем node обратно, изменив size на 0
+         * 4. Делаем соответствующий индекс в файле INDEX_NEW
+         * 5. Сохраняем из node смещение (fseek + ftell)
          * Таким образом, INDEX_DEAD превращается в INDEX_NEW, а его бывший offset будет прикреплен к индексу
          * переносимого документа.
          * Если подходящих дырок нет (или список пустой), то перемещаемся в конец файла, смещение также сохраняем. */
         if (list->front && list->front->size >= header.size) {
             listNode* node = popFront(list);
+            zgdbIndex* index = getIndex(file, node->indexNumber);
+            uint64_t diff = node->size - header.size;
+            if (diff) {
+                insertNode(list, createNode(diff, file->header->indexCount++));
+                writeHeader(file);
+                updateIndex(file, file->header->indexCount - 1, wrap_uint8_t(INDEX_DEAD),
+                            wrap_int64_t(index->offset + header.size));
+            }
             node->size = 0;
             insertNode(list, node);
             updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
 
-            zgdbIndex* index = getIndex(file, node->indexNumber);
             fseeko64(file->f, index->offset, SEEK_SET);
             free(index);
             free(node);
@@ -137,7 +145,8 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
             fseeko64(file->f, 0, SEEK_END);
         }
         int64_t newPos = ftello64(file->f);
-        updateIndex(file, header.indexNumber, not_present_uint8_t(), wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
+        updateIndex(file, header.indexNumber, not_present_uint8_t(),
+                    wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
 
         fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
         newPos += sizeof(documentHeader);
@@ -231,7 +240,8 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
             }
         }
 
-        updateIndex(file, header->indexNumber, wrap_uint8_t(INDEX_ALIVE), updateOffsetInIndex ? wrap_int64_t(header->id.offset) : not_present_int64_t());
+        updateIndex(file, header->indexNumber, wrap_uint8_t(INDEX_ALIVE),
+                    updateOffsetInIndex ? wrap_int64_t(header->id.offset) : not_present_int64_t());
         free(header);
     }
     return true;
