@@ -38,38 +38,32 @@ size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list) {
     return written;
 }
 
-zgdbIndex* getIndex(zgdbFile* file, uint64_t i) {
+zgdbIndex getIndex(zgdbFile* file, uint64_t i) {
+    zgdbIndex index = { INDEX_NOT_EXIST, 0 };
     if (i < file->header->indexCount) {
-        zgdbIndex* index = malloc(sizeof(zgdbIndex));
-        if (index) {
-            fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-            for (int j = 0; j < i; j++) {
-                fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
-            }
-            fread(index, sizeof(zgdbIndex), 1, file->f);
-        }
-        return index;
+        fseeko64(file->f, sizeof(zgdbHeader) + sizeof(zgdbIndex) * i, SEEK_SET);
+        fread(&index, sizeof(zgdbIndex), 1, file->f);
     }
-    return NULL;
+    return index;
 }
 
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset) {
-    int64_t pos = ftello64(file->f);
-    fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-    for (int j = 0; j < i; j++) {
-        fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
+    if (i < file->header->indexCount) {
+        int64_t pos = ftello64(file->f);
+        fseeko64(file->f, sizeof(zgdbHeader) + sizeof(zgdbIndex) * i, SEEK_SET);
+        size_t written = 0;
+        if (flag.isPresent) {
+            written += fwrite(&flag.value, sizeof(uint8_t), 1, file->f);
+        } else {
+            fseek(file->f, sizeof(uint8_t), SEEK_CUR);
+        }
+        if (offset.isPresent) {
+            written += fwrite(&offset.value, sizeof(int64_t), 1, file->f);
+        }
+        fseeko64(file->f, pos, SEEK_SET);
+        return (flag.isPresent == offset.isPresent) ? (written == 2) : (written == 1); // XOR
     }
-    size_t written = 0;
-    if (flag.isPresent) {
-        written += fwrite(&flag.value, sizeof(uint8_t), 1, file->f);
-    } else {
-        fseek(file->f, sizeof(uint8_t), SEEK_CUR);
-    }
-    if (offset.isPresent) {
-        written += fwrite(&offset.value, sizeof(int64_t), 1, file->f);
-    }
-    fseeko64(file->f, pos, SEEK_SET);
-    return (flag.isPresent == offset.isPresent) ? (written == 2) : (written == 1); // XOR
+    return false;
 }
 
 // TODO: добавить внутрь загрузку списка индексов

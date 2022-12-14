@@ -32,6 +32,7 @@ typedef struct {
 
 /* Флаги для индексов */
 typedef enum {
+    INDEX_NOT_EXIST = 0, // флаг, сигнализирующий об ошибке
     INDEX_NEW = 1, // индекс только что создан и ещё не привязан к блоку
     INDEX_ALIVE = 2, // индекс привязан к использующемуся ("живому") блоку
     INDEX_DEAD = 3 // индекс привязан к неиспользующемуся ("мертвому") блоку
@@ -52,8 +53,8 @@ bool writeHeader(zgdbFile* file);
 /* Функция для записи новых (INDEX_NEW) индексов в файл. Возвращает количество записанных индексов */
 size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list);
 
-/* Функция для получения индекса по его порядковому номеру. Возвращает null при неудаче */
-zgdbIndex* getIndex(zgdbFile* file, uint64_t i);
+/* Функция для получения индекса по его порядковому номеру. При неудаче возвращает индекс с флагом INDEX_NOT_EXIST */
+zgdbIndex getIndex(zgdbFile* file, uint64_t i);
 
 /* Функция, меняющая флаг и offset в индексе по его порядковому номеру. Возвращает false при неудаче */
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset);
