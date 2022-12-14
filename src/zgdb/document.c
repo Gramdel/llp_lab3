@@ -144,13 +144,13 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
 
         fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
         newPos += sizeof(documentHeader);
-        int64_t bytesLeft = header.size - sizeof(documentHeader);
+        uint64_t bytesLeft = header.size - sizeof(documentHeader);
         do {
             int64_t bufSize;
             if (bytesLeft > DOCUMENT_BUF_SIZE) {
                 bufSize = DOCUMENT_BUF_SIZE;
             } else {
-                bufSize = bytesLeft;
+                bufSize = (int64_t) bytesLeft;
             }
             bytesLeft -= bufSize;
 
@@ -174,7 +174,7 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
         }
 
         fseeko64(file->f, oldPos, SEEK_SET); // перед следующей итерацией нужно вернуться к началу
-        availableSpace += header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
+        availableSpace += (int64_t) header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
     } while (availableSpace < neededSpace);
 
     writeIndexes(file, availableSpace / sizeof(zgdbIndex), list);
@@ -183,30 +183,32 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
     return true;
 }
 
-bool writeElement(zgdbFile* file, element* el) {
-    // TODO: проверки
-    fwrite(&el->type, sizeof(uint8_t), 1, file->f);
-    fwrite(el->key, sizeof(char), 13, file->f);
+uint64_t writeElement(zgdbFile* file, element* el) {
+    uint64_t bytesWritten = 0;
+    bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
+    bytesWritten += fwrite(el->key, sizeof(char), 13, file->f) * sizeof(char);
     uint64_t tmp; // для битового поля (documentValue)
     switch (el->type) {
         case TYPE_INT:
-            fwrite(&el->integerValue, sizeof(int32_t), 1, file->f);
+            bytesWritten += fwrite(&el->integerValue, sizeof(int32_t), 1, file->f) * sizeof(int32_t);
             break;
         case TYPE_DOUBLE:
-            fwrite(&el->doubleValue, sizeof(double), 1, file->f);
+            bytesWritten += fwrite(&el->doubleValue, sizeof(double), 1, file->f) * sizeof(double);
             break;
         case TYPE_BOOLEAN:
-            fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f);
+            bytesWritten += fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f) * sizeof(uint8_t);
             break;
         case TYPE_STRING:
-            fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f);
+            bytesWritten += fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f) *
+                            sizeof(unsigned char);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
+            // TODO: может здесь записывать в хедеры детей инфу?
             tmp = el->documentValue;
-            fwrite(&tmp, 5, 1, file->f); // uint64_t : 40 == 5 байт
+            bytesWritten += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
             break;
     }
-    return true;
+    return bytesWritten;
 }
 
 bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
@@ -218,7 +220,7 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
         moveFirstDocuments(file, list); // сразу выделяем индексы, если список пустой
     }
 
-    int64_t diff = list->front->size - (int64_t) header.size;
+    int64_t diff = (int64_t) list->front->size - (int64_t) header.size;
     if (diff >= 0) {
         zgdbIndex index = getIndex(file, list->front->indexNumber);
         header.id.offset = index.offset;
@@ -231,7 +233,8 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
                 moveFirstDocuments(file, list); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
             }
             listNode* node = popBack(list);
-            updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD), wrap_int64_t(index.offset + header.size));
+            updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD),
+                        wrap_int64_t(index.offset + (int64_t) header.size));
             node->size = diff;
             insertNode(list, node);
         }
@@ -250,12 +253,12 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     }
 
     header.id.timestamp = (uint32_t) time(NULL);
-    if (fwrite(&header, sizeof(documentHeader), 1, file->f)) {
-        for (int i = 0; i < schema->elementCount; i++) {
-            writeElement(file, schema->elements + i);
-        }
+    uint64_t bytesWritten = fwrite(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
+    for (int i = 0; i < schema->elementCount; i++) {
+        bytesWritten += writeElement(file, schema->elements + i);
     }
-    return true;
+    printf("%d\n", bytesWritten);
+    return bytesWritten == header.size;
 }
 
 bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
@@ -289,9 +292,9 @@ bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
 }
 
 element* readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
-    element* el = malloc(sizeof(element));
     zgdbIndex index = getIndex(file, i);
     if (index.flag != INDEX_NOT_EXIST) {
+        element* el = malloc(sizeof(element));
         fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
         fseek(file->f, sizeof(documentHeader), SEEK_CUR); // TODO: может нужен fread?
         bool matchFound;
@@ -329,6 +332,5 @@ element* readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
         } while (!matchFound);
         return el;
     }
-    free(el);
     return NULL;
 }
