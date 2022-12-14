@@ -9,20 +9,13 @@
 
 /* Идентификаторы для типов данных в документе */
 typedef enum {
-    TYPE_INT = 0x01, // для int32_t
-    TYPE_DOUBLE = 0x02, // для double
-    TYPE_BOOLEAN = 0x03, // для boolean (uint8_t)
-    TYPE_STRING = 0x04, // для строки
-    TYPE_EMBEDDED_DOCUMENT = 0x05 // для вложенного документа
+    TYPE_NOT_EXIST = 0, // тип, сигнализирующий об ошибке
+    TYPE_INT = 1, // для int32_t
+    TYPE_DOUBLE = 2, // для double
+    TYPE_BOOLEAN = 3, // для boolean (uint8_t)
+    TYPE_STRING = 4, // для строки
+    TYPE_EMBEDDED_DOCUMENT = 5 // для вложенного документа
 } elementType;
-
-// TODO: нужны ли вообще терминаторы?
-/* Терминаторы в документе */
-typedef enum {
-    NULL_TERMINATOR = 0x00, // терминатор для строк и ключей в документе
-    DOCUMENT_TERMINATOR = 0xFF, // терминатор для определения границ документов
-    EMBEDDED_DOCUMENT_TERMINATOR = 0xFE // терминатор для вложенного документа
-} terminator;
 
 /* Структура для строки */
 typedef struct {
@@ -95,7 +88,7 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
 /* Функция для удаления документа из файла. Возвращает false при неудаче */
 bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i);
 
-/* Функция для чтения элемента из документа по ключу. Возвращает null при неудаче */
-element* readElement(zgdbFile* file, const char* neededKey, uint64_t i);
+/* Функция для чтения элемента из документа по ключу. При неудаче возвращает элемент с типом TYPE_NOT_EXIST */
+element readElement(zgdbFile* file, const char* neededKey, uint64_t i);
 
 #endif

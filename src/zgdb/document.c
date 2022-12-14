@@ -101,12 +101,8 @@ uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
 // TODO: может возвращать void? Или нужны проверки
 bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
     // Смещаемся к началу документов:
-    fseek(file->f, sizeof(zgdbHeader), SEEK_SET);
-    for (int i = 0; i < file->header->indexCount; i++) {
-        fseek(file->f, sizeof(zgdbIndex), SEEK_CUR);
-    }
-    fseek(file->f, file->header->firstDocumentOffset, SEEK_CUR);
-
+    fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * file->header->indexCount +
+                                 file->header->firstDocumentOffset), SEEK_SET);
     int64_t oldPos = ftello64(file->f); // сохраняем позицию, с которой начинается первый документ
     int64_t neededSpace = sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY;
     int64_t availableSpace = file->header->firstDocumentOffset; // перед первым документом могут быть неиспользуемые байты
@@ -142,7 +138,8 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
         updateIndex(file, header.indexNumber, not_present_uint8_t(),
                     wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
 
-        fwrite(&header, sizeof(documentHeader), 1, file->f); // записываем хедер
+        // Перемещаем документ:
+        fwrite(&header, sizeof(documentHeader), 1, file->f);
         newPos += sizeof(documentHeader);
         uint64_t bytesLeft = header.size - sizeof(documentHeader);
         do {
@@ -196,11 +193,10 @@ uint64_t writeElement(zgdbFile* file, element* el) {
             bytesWritten += fwrite(&el->doubleValue, sizeof(double), 1, file->f) * sizeof(double);
             break;
         case TYPE_BOOLEAN:
-            bytesWritten += fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f) * sizeof(uint8_t);
+            bytesWritten += fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f);
             break;
         case TYPE_STRING:
-            bytesWritten += fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f) *
-                            sizeof(unsigned char);
+            bytesWritten += fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
             // TODO: может здесь записывать в хедеры детей инфу?
@@ -257,7 +253,6 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
     for (int i = 0; i < schema->elementCount; i++) {
         bytesWritten += writeElement(file, schema->elements + i);
     }
-    printf("%d\n", bytesWritten);
     return bytesWritten == header.size;
 }
 
@@ -291,46 +286,51 @@ bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
     return false;
 }
 
-element* readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
+element readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
     zgdbIndex index = getIndex(file, i);
-    if (index.flag != INDEX_NOT_EXIST) {
-        element* el = malloc(sizeof(element));
+    if (index.flag == INDEX_ALIVE) {
+        bool matchFound = false;
+        documentHeader header;
         fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
-        fseek(file->f, sizeof(documentHeader), SEEK_CUR); // TODO: может нужен fread?
-        bool matchFound;
-        do {
-            fread(&el->type, sizeof(uint8_t), 1, file->f);
-            fread(&el->key, sizeof(char), 13, file->f);
+        uint64_t bytesRead = fread(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
+        element el;
+        while (!matchFound && bytesRead < header.size) {
+            bytesRead += fread(&el.type, sizeof(uint8_t), 1, file->f);
+            bytesRead += fread(&el.key, sizeof(char), 13, file->f) * sizeof(char);
             uint64_t tmp; // для битового поля (documentValue)
-            matchFound = strcmp(el->key, neededKey) == 0;
-            switch (el->type) {
+            matchFound = strcmp(el.key, neededKey) == 0;
+            switch (el.type) {
                 case TYPE_INT:
-                    fread(&el->integerValue, sizeof(int32_t), 1, file->f);
+                    bytesRead += fread(&el.integerValue, sizeof(int32_t), 1, file->f) * sizeof(int32_t);
                     break;
                 case TYPE_DOUBLE:
-                    fread(&el->doubleValue, sizeof(double), 1, file->f);
+                    bytesRead += fread(&el.doubleValue, sizeof(double), 1, file->f) * sizeof(double);
                     break;
                 case TYPE_BOOLEAN:
-                    fread(&el->booleanValue, sizeof(uint8_t), 1, file->f);
+                    bytesRead += fread(&el.booleanValue, sizeof(uint8_t), 1, file->f);
                     break;
                 case TYPE_STRING:
                     if (matchFound) {
-                        el->stringValue = malloc(sizeof(str));
-                        fread(&el->stringValue->size, sizeof(uint32_t), 1, file->f);
-                        el->stringValue->data = malloc(sizeof(unsigned char) * (el->stringValue->size + 1));
-                        fread(&el->stringValue->data, sizeof(unsigned char), el->stringValue->size + 1, file->f);
+                        el.stringValue = malloc(sizeof(str));
+                        bytesRead += fread(&el.stringValue->size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
+                        el.stringValue->data = malloc(sizeof(unsigned char) * (el.stringValue->size + 1));
+                        bytesRead += fread(&el.stringValue->data, sizeof(unsigned char), el.stringValue->size + 1,
+                                           file->f);
                     } else {
-                        fread(&el->integerValue, sizeof(uint32_t), 1, file->f);
-                        fseeko64(file->f, el->integerValue, SEEK_CUR);
+                        bytesRead += fread(&el.integerValue, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
+                        fseeko64(file->f, el.integerValue, SEEK_CUR);
+                        bytesRead += el.integerValue;
                     }
                     break;
                 case TYPE_EMBEDDED_DOCUMENT:
-                    fread(&tmp, 5, 1, file->f); // uint64_t : 40 == 5 байт
-                    el->documentValue = tmp;
+                    bytesRead = fread(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
+                    el.documentValue = tmp;
                     break;
             }
-        } while (!matchFound);
-        return el;
+        }
+        if (matchFound) {
+            return el;
+        }
     }
-    return NULL;
+    return (element) { 0 };
 }

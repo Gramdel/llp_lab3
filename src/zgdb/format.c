@@ -41,7 +41,7 @@ size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list) {
 zgdbIndex getIndex(zgdbFile* file, uint64_t i) {
     zgdbIndex index = { INDEX_NOT_EXIST, 0 };
     if (i < file->header->indexCount) {
-        fseeko64(file->f, sizeof(zgdbHeader) + sizeof(zgdbIndex) * i, SEEK_SET);
+        fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * i), SEEK_SET);
         fread(&index, sizeof(zgdbIndex), 1, file->f);
     }
     return index;
@@ -50,7 +50,7 @@ zgdbIndex getIndex(zgdbFile* file, uint64_t i) {
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset) {
     if (i < file->header->indexCount) {
         int64_t pos = ftello64(file->f);
-        fseeko64(file->f, sizeof(zgdbHeader) + sizeof(zgdbIndex) * i, SEEK_SET);
+        fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * i), SEEK_SET);
         size_t written = 0;
         if (flag.isPresent) {
             written += fwrite(&flag.value, sizeof(uint8_t), 1, file->f);

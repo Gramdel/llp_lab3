@@ -63,6 +63,7 @@ int main(int argc, char** argv) {
     writeDocument(file, list, schema2); // 8
     writeDocument(file, list, schema2); // 9
 
+    printf("%d\n", readElement(file, "thi3", 20).integerValue);
     removeDocument(file, list, 2);
     writeDocument(file, list, schema2); // 10
 
