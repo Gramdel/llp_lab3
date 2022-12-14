@@ -32,44 +32,47 @@ void destroySchema(documentSchema* schema) {
     }
 }
 // TODO: может как-то упростить? switch?
-bool addElementToSchema(documentSchema* schema, element* el) {
+bool addElementToSchema(documentSchema* schema, element el, const char* key) {
     if (schema->elementCount == schema->capacity) {
         element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
         if (!newElements) {
-            free(el);
             return false;
         }
         memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
         free(schema->elements);
         schema->elements = newElements;
     }
-    schema->elements[schema->elementCount++] = *el;
-    free(el);
+    memset(el.key, 0, 13);
+    strcpy(el.key, key);
+    schema->elements[schema->elementCount++] = el;
     return true;
 }
 
-bool addIntegerToSchema(documentSchema* schema, const char* key, int32_t value) {
-    element* el = malloc(sizeof(element));
-    if (el) {
-        el->type = TYPE_INT;
-        el->integerValue = value;
-        memset(el->key, 0, 13);
-        strcpy(el->key, key);
-        return addElementToSchema(schema, el);
+bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
+}
+
+bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
+}
+
+bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
+}
+
+bool addStringToSchema(documentSchema* schema, char* key, char* value) {
+    uint32_t size = strlen(value);
+    str* s = malloc(sizeof(str));
+    if (s) {
+        s->size = size;
+        s->data = value;
+        return addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = s }, key);
     }
     return false;
 }
 
-bool addBooleanToSchema(documentSchema* schema, const char* key, uint8_t value) {
-    element* el = malloc(sizeof(element));
-    if (el) {
-        el->type = TYPE_BOOLEAN;
-        el->booleanValue = value;
-        memset(el->key, 0, 13);
-        strcpy(el->key, key);
-        return addElementToSchema(schema, el);
-    }
-    return false;
+bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value }, key);
 }
 
 uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
@@ -88,7 +91,7 @@ uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
                 size += sizeof(uint8_t);
                 break;
             case TYPE_STRING:
-                size += sizeof(unsigned char) * el.stringValue->size;
+                size += sizeof(char) * el.stringValue->size;
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
                 size += 5; // uint64_t : 40 == 5 байт
@@ -196,7 +199,7 @@ uint64_t writeElement(zgdbFile* file, element* el) {
             bytesWritten += fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f);
             break;
         case TYPE_STRING:
-            bytesWritten += fwrite(el->stringValue->data, sizeof(unsigned char), el->stringValue->size, file->f);
+            bytesWritten += fwrite(el->stringValue->data, sizeof(char), el->stringValue->size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
             // TODO: может здесь записывать в хедеры детей инфу?
@@ -286,7 +289,7 @@ bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
     return false;
 }
 
-element readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
+element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
     zgdbIndex index = getIndex(file, i);
     if (index.flag == INDEX_ALIVE) {
         bool matchFound = false;
@@ -313,9 +316,8 @@ element readElement(zgdbFile* file, const char* neededKey, uint64_t i) {
                     if (matchFound) {
                         el.stringValue = malloc(sizeof(str));
                         bytesRead += fread(&el.stringValue->size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
-                        el.stringValue->data = malloc(sizeof(unsigned char) * (el.stringValue->size + 1));
-                        bytesRead += fread(&el.stringValue->data, sizeof(unsigned char), el.stringValue->size + 1,
-                                           file->f);
+                        el.stringValue->data = malloc(sizeof(char) * (el.stringValue->size + 1));
+                        bytesRead += fread(&el.stringValue->data, sizeof(char), el.stringValue->size + 1, file->f);
                     } else {
                         bytesRead += fread(&el.integerValue, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
                         fseeko64(file->f, el.integerValue, SEEK_CUR);

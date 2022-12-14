@@ -20,7 +20,7 @@ typedef enum {
 /* Структура для строки */
 typedef struct {
     uint32_t size;
-    unsigned char* data;
+    char* data;
 } str;
 
 /* Структура для элемента документа */
@@ -66,15 +66,15 @@ typedef struct {
 } documentSchema;
 
 /* Функции для добавления данных в схему. Возвращают false при неудаче */
-bool addIntegerToSchema(documentSchema* schema, const char* key, int32_t value);
+bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value);
 
-bool addDoubleToSchema(documentSchema* schema, const char* key, double value);
+bool addDoubleToSchema(documentSchema* schema, char* key, double value);
 
-bool addBooleanToSchema(documentSchema* schema, const char* key, uint8_t value);
+bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value);
 
-bool addStringToSchema(documentSchema* schema, const char* key, str* value);
+bool addStringToSchema(documentSchema* schema, char* key, char* value);
 
-bool addDocumentToSchema(documentSchema* schema, const char* key, uint64_t value);
+bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value);
 
 /* Функция для инициализации схемы с определенным начальным размером. */
 documentSchema* createSchema(size_t capacity);
@@ -89,6 +89,6 @@ bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
 bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i);
 
 /* Функция для чтения элемента из документа по ключу. При неудаче возвращает элемент с типом TYPE_NOT_EXIST */
-element readElement(zgdbFile* file, const char* neededKey, uint64_t i);
+element readElement(zgdbFile* file, char* neededKey, uint64_t i);
 
 #endif

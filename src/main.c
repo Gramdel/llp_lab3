@@ -42,20 +42,21 @@ int main(int argc, char** argv) {
         addBooleanToSchema(schema3, "isFoo", true);
     }
 
-    documentSchema* schema4 = createSchema(2); // size 126
+    documentSchema* schema4 = createSchema(2); // size ?
     if (schema4) {
         addIntegerToSchema(schema4, "fou1", 123);
         addIntegerToSchema(schema4, "fou2", 456);
         addIntegerToSchema(schema4, "fou3", 789);
         addBooleanToSchema(schema4, "isFirst", false);
-        addBooleanToSchema(schema4, "isMoo", true);
-        addBooleanToSchema(schema4, "isBoo", false);
+        addDoubleToSchema(schema4, "testDouble", 128.128);
+        addStringToSchema(schema4, "testString", "I AM STRING");
+        addDocumentToSchema(schema4, "testDoc", 0);
     }
 
     writeDocument(file, list, schema1); // 0
     writeDocument(file, list, schema2); // 1
     writeDocument(file, list, schema3); // 2
-    writeDocument(file, list, schema2); // 3
+    writeDocument(file, list, schema4); // 3
     writeDocument(file, list, schema2); // 4
     writeDocument(file, list, schema2); // 5
     writeDocument(file, list, schema2); // 6
