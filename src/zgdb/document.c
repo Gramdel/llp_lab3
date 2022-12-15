@@ -18,20 +18,12 @@ documentSchema* createSchema(size_t capacity) {
 void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
-            for (int i = 0; i < schema->elementCount; i++) {
-                if (schema->elements[i].type == TYPE_STRING && schema->elements[i].stringValue) {
-                    if (schema->elements[i].stringValue->data) {
-                        free(schema->elements[i].stringValue->data);
-                    }
-                    free(schema->elements[i].stringValue);
-                }
-            }
             free(schema->elements);
         }
         free(schema);
     }
 }
-// TODO: может как-то упростить? switch?
+
 bool addElementToSchema(documentSchema* schema, element el, const char* key) {
     if (schema->elementCount == schema->capacity) {
         element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
@@ -61,44 +53,12 @@ bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
 }
 
 bool addStringToSchema(documentSchema* schema, char* key, char* value) {
-    uint32_t size = strlen(value);
-    str* s = malloc(sizeof(str));
-    if (s) {
-        s->size = size;
-        s->data = value;
-        return addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = s }, key);
-    }
-    return false;
+    return addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }},
+                              key);
 }
 
 bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
     return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value }, key);
-}
-
-uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
-    uint64_t size = sizeof(documentHeader);
-    for (int i = 0; i < elementNumber; i++) {
-        size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
-        element el = elements[i];
-        switch (el.type) {
-            case TYPE_INT:
-                size += sizeof(int32_t);
-                break;
-            case TYPE_DOUBLE:
-                size += sizeof(double);
-                break;
-            case TYPE_BOOLEAN:
-                size += sizeof(uint8_t);
-                break;
-            case TYPE_STRING:
-                size += sizeof(char) * el.stringValue->size;
-                break;
-            case TYPE_EMBEDDED_DOCUMENT:
-                size += 5; // uint64_t : 40 == 5 байт
-                break;
-        }
-    }
-    return size;
 }
 
 // TODO: может возвращать void? Или нужны проверки
@@ -183,6 +143,33 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
     return true;
 }
 
+uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
+    uint64_t size = sizeof(documentHeader);
+    for (int i = 0; i < elementNumber; i++) {
+        size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
+        element el = elements[i];
+        switch (el.type) {
+            case TYPE_INT:
+                size += sizeof(int32_t);
+                break;
+            case TYPE_DOUBLE:
+                size += sizeof(double);
+                break;
+            case TYPE_BOOLEAN:
+                size += sizeof(uint8_t);
+                break;
+            case TYPE_STRING:
+                size += sizeof(uint32_t); // размер строки
+                size += sizeof(char) * el.stringValue.size; // сама строка
+                break;
+            case TYPE_EMBEDDED_DOCUMENT:
+                size += 5; // uint64_t : 40 == 5 байт
+                break;
+        }
+    }
+    return size;
+}
+
 uint64_t writeElement(zgdbFile* file, element* el) {
     uint64_t bytesWritten = 0;
     bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
@@ -199,7 +186,8 @@ uint64_t writeElement(zgdbFile* file, element* el) {
             bytesWritten += fwrite(&el->booleanValue, sizeof(uint8_t), 1, file->f);
             break;
         case TYPE_STRING:
-            bytesWritten += fwrite(el->stringValue->data, sizeof(char), el->stringValue->size, file->f);
+            bytesWritten += fwrite(&el->stringValue.size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
+            bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
             // TODO: может здесь записывать в хедеры детей инфу?
@@ -314,10 +302,9 @@ element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
                     break;
                 case TYPE_STRING:
                     if (matchFound) {
-                        el.stringValue = malloc(sizeof(str));
-                        bytesRead += fread(&el.stringValue->size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
-                        el.stringValue->data = malloc(sizeof(char) * (el.stringValue->size + 1));
-                        bytesRead += fread(&el.stringValue->data, sizeof(char), el.stringValue->size + 1, file->f);
+                        bytesRead += fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
+                        el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
+                        bytesRead += fread(&el.stringValue.data, sizeof(char), el.stringValue.size, file->f);
                     } else {
                         bytesRead += fread(&el.integerValue, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
                         fseeko64(file->f, el.integerValue, SEEK_CUR);
@@ -335,4 +322,10 @@ element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
         }
     }
     return (element) { 0 };
+}
+
+void destroyStringElement(element el) {
+    if (el.type == TYPE_STRING) {
+        free(el.stringValue.data);
+    }
 }
