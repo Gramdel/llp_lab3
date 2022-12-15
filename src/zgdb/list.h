@@ -21,9 +21,6 @@ typedef struct sortedList {
 /* Функция для создания узла */
 listNode* createNode(uint64_t size, uint64_t indexNumber);
 
-/* Функция для инициализации списка */
-sortedList* initList();
-
 /* Функция для уничтожения списка */
 void destroyList(sortedList* list);
 

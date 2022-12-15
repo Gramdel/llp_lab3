@@ -5,19 +5,15 @@
 #include "zgdb/list.h"
 
 int main(int argc, char** argv) {
-    sortedList* list;
     zgdbFile* file = loadFile("test");
     if (!file) {
-        list = initList();
-        file = createFile("test", list);
+        file = createFile("test");
         if (!file) {
             printf("Error\n");
+            exit(-1);
         }
-    } else {
-        list = createList(file);
     }
-    printf("%08X\n", file->header->fileType);
-
+    printf("%08X\n", file->header.fileType);
 
     documentSchema* schema1 = createSchema(2); // size 78
     if (schema1) {
@@ -53,24 +49,21 @@ int main(int argc, char** argv) {
         addDocumentToSchema(schema4, "testDoc", 0);
     }
 
-    writeDocument(file, list, schema1); // 0
-    writeDocument(file, list, schema2); // 1
-    writeDocument(file, list, schema3); // 2
-    writeDocument(file, list, schema4); // 3
-    writeDocument(file, list, schema2); // 4
-    writeDocument(file, list, schema2); // 5
-    writeDocument(file, list, schema2); // 6
-    writeDocument(file, list, schema2); // 7
-    writeDocument(file, list, schema2); // 8
-    writeDocument(file, list, schema2); // 9
+    writeDocument(file, schema1); // 0
+    writeDocument(file, schema2); // 1
+    writeDocument(file, schema3); // 2
+    writeDocument(file, schema4); // 3
+    writeDocument(file, schema2); // 4
+    writeDocument(file, schema2); // 5
+    writeDocument(file, schema2); // 6
+    writeDocument(file, schema2); // 7
+    writeDocument(file, schema2); // 8
+    writeDocument(file, schema2); // 9
 
     printf("%d\n", readElement(file, "thi3", 20).integerValue);
-    removeDocument(file, list, 2);
-    writeDocument(file, list, schema2); // 10
+    removeDocument(file, 2);
+    writeDocument(file, schema2); // 10
 
-    if (list) {
-        destroyList(list);
-    }
     destroySchema(schema1);
     destroySchema(schema2);
     destroySchema(schema3);

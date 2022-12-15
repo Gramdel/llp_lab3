@@ -3,7 +3,7 @@
 #include <time.h>
 #include "document.h"
 
-documentSchema* createSchema(size_t capacity) {
+documentSchema* createSchema(uint64_t capacity) {
     documentSchema* schema = malloc(sizeof(documentSchema));
     if (schema) {
         schema->elements = malloc(sizeof(element) * capacity);
@@ -53,8 +53,8 @@ bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
 }
 
 bool addStringToSchema(documentSchema* schema, char* key, char* value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }},
-                              key);
+    return addElementToSchema(schema,
+                              (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }}, key);
 }
 
 bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
@@ -62,13 +62,13 @@ bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
 }
 
 // TODO: может возвращать void? Или нужны проверки
-bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
+bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
-    fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * file->header->indexCount +
-                                 file->header->firstDocumentOffset), SEEK_SET);
+    fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * file->header.indexCount +
+                                 file->header.firstDocumentOffset), SEEK_SET);
     int64_t oldPos = ftello64(file->f); // сохраняем позицию, с которой начинается первый документ
     int64_t neededSpace = sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY;
-    int64_t availableSpace = file->header->firstDocumentOffset; // перед первым документом могут быть неиспользуемые байты
+    int64_t availableSpace = file->header.firstDocumentOffset; // перед первым документом могут быть неиспользуемые байты
     do {
         documentHeader header;
         fread(&header, sizeof(documentHeader), 1, file->f);
@@ -84,11 +84,11 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
          * переносимого документа.
          * Если подходящих дырок нет (или список пустой), то перемещаемся в конец файла, смещение также сохраняем. */
         uint64_t diff = 0;
-        if (list->front && list->front->size >= header.size) {
-            diff = list->front->size - header.size;
-            listNode* node = popFront(list);
+        if (file->list.front && file->list.front->size >= header.size) {
+            diff = file->list.front->size - header.size;
+            listNode* node = popFront(&file->list);
             node->size = 0;
-            insertNode(list, node);
+            insertNode(&file->list, node);
             updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
 
             zgdbIndex index = getIndex(file, node->indexNumber);
@@ -127,9 +127,9 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
         /* Если найденная дырка больше, чем документ, то, после переноса документа, создаём на его месте INDEX_DEAD
          * индекс для оставшейся части дырки */
         if (diff) {
-            insertNode(list, createNode(diff, file->header->indexCount++));
+            insertNode(&file->list, createNode(diff, file->header.indexCount++));
             writeHeader(file);
-            updateIndex(file, file->header->indexCount - 1, wrap_uint8_t(INDEX_DEAD), wrap_int64_t(newPos));
+            updateIndex(file, file->header.indexCount - 1, wrap_uint8_t(INDEX_DEAD), wrap_int64_t(newPos));
             availableSpace -= sizeof(zgdbIndex);
         }
 
@@ -137,15 +137,15 @@ bool moveFirstDocuments(zgdbFile* file, sortedList* list) {
         availableSpace += (int64_t) header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
     } while (availableSpace < neededSpace);
 
-    writeIndexes(file, availableSpace / sizeof(zgdbIndex), list);
-    file->header->firstDocumentOffset = availableSpace % sizeof(zgdbIndex); // сохраняем остаток места
+    writeNewIndexes(file, availableSpace / sizeof(zgdbIndex));
+    file->header.firstDocumentOffset = availableSpace % sizeof(zgdbIndex); // сохраняем остаток места
     writeHeader(file);
     return true;
 }
 
-uint64_t calcDocumentSize(element* elements, size_t elementNumber) {
+uint64_t calcDocumentSize(element* elements, uint64_t elementCount) {
     uint64_t size = sizeof(documentHeader);
-    for (int i = 0; i < elementNumber; i++) {
+    for (uint64_t i = 0; i < elementCount; i++) {
         size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
         element el = elements[i];
         switch (el.type) {
@@ -198,66 +198,66 @@ uint64_t writeElement(zgdbFile* file, element* el) {
     return bytesWritten;
 }
 
-bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema) {
+bool writeDocument(zgdbFile* file, documentSchema* schema) {
     documentHeader header;
     header.size = calcDocumentSize(schema->elements, schema->elementCount);
     header.parentIndexNumber = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
 
-    if (!list->front) {
-        moveFirstDocuments(file, list); // сразу выделяем индексы, если список пустой
+    if (!file->list.front) {
+        moveFirstDocuments(file); // сразу выделяем индексы, если список пустой
     }
 
-    int64_t diff = (int64_t) list->front->size - (int64_t) header.size;
+    int64_t diff = (int64_t) file->list.front->size - (int64_t) header.size;
     if (diff >= 0) {
-        zgdbIndex index = getIndex(file, list->front->indexNumber);
+        zgdbIndex index = getIndex(file, file->list.front->indexNumber);
         header.id.offset = index.offset;
-        header.indexNumber = list->front->indexNumber;
+        header.indexNumber = file->list.front->indexNumber;
         updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), not_present_int64_t());
-        popFront(list);
+        popFront(&file->list);
 
         if (diff) {
-            if (!list->back || list->back->size) {
-                moveFirstDocuments(file, list); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
+            if (!file->list.back || file->list.back->size) {
+                moveFirstDocuments(file); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
             }
-            listNode* node = popBack(list);
+            listNode* node = popBack(&file->list);
             updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD),
                         wrap_int64_t(index.offset + (int64_t) header.size));
             node->size = diff;
-            insertNode(list, node);
+            insertNode(&file->list, node);
         }
 
         fseeko64(file->f, header.id.offset, SEEK_SET);
     } else {
         // В любом случае будем писать в конец файла, но возможно, что нет INDEX_NEW индексов, поэтому выделяем новые
-        if (list->back->size != 0) {
-            moveFirstDocuments(file, list);
+        if (file->list.back->size != 0) {
+            moveFirstDocuments(file);
         }
         header.id.offset = ftello64(file->f);
-        header.indexNumber = list->back->indexNumber;
+        header.indexNumber = file->list.back->indexNumber;
         updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), wrap_int64_t(header.id.offset));
-        popBack(list);
+        popBack(&file->list);
         fseeko64(file->f, 0, SEEK_END);
     }
 
     header.id.timestamp = (uint32_t) time(NULL);
     uint64_t bytesWritten = fwrite(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
-    for (int i = 0; i < schema->elementCount; i++) {
+    for (uint64_t i = 0; i < schema->elementCount; i++) {
         bytesWritten += writeElement(file, schema->elements + i);
     }
     return bytesWritten == header.size;
 }
 
-bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i) {
+bool removeDocument(zgdbFile* file, uint64_t i) {
     zgdbIndex index = getIndex(file, i);
     if (index.flag != INDEX_NOT_EXIST) {
         updateIndex(file, i, wrap_uint8_t(INDEX_DEAD), not_present_int64_t());
         fseeko64(file->f, index.offset, SEEK_SET);
         uint64_t size;
         fread(&size, 5, 1, file->f); // uint64_t : 40 == 5 байт
-        insertNode(list, createNode(size, i));
+        insertNode(&file->list, createNode(size, i));
 
         // Ищем детей и удаляем в них информацию о родителе:
-        for (int j = 0; j < file->header->indexCount; j++) {
+        for (uint64_t j = 0; j < file->header.indexCount; j++) {
             if (j != i) {
                 index = getIndex(file, j);
                 if (index.flag == INDEX_ALIVE) {

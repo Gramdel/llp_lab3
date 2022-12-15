@@ -24,10 +24,11 @@ typedef struct __attribute__((packed)) {
     int64_t offset; // смещение блока относительно начала файла
 } zgdbIndex;
 
-/* Обёртка для более удобного хранения открытого файла и заголовка вместе */
+/* Структура, представляющая открытый ZGDB файл в памяти */
 typedef struct {
-    FILE* f; // указатель на открытый файл
-    zgdbHeader* header; // указатель на заголовок
+    FILE* f; // указатель на FILE
+    zgdbHeader header; // заголовок
+    sortedList list; // отсортированный список индексов свободных мест в файле
 } zgdbFile;
 
 /* Флаги для индексов */
@@ -41,8 +42,8 @@ typedef enum {
 /* Функция для загрузки существующего файла */
 zgdbFile* loadFile(const char* filename);
 
-/* Функция для создания нового файла. Также создает список свободных индексов */
-zgdbFile* createFile(const char* filename, sortedList* list);
+/* Функция для создания нового файла */
+zgdbFile* createFile(const char* filename);
 
 /* Функция для закрытия файла */
 void closeFile(zgdbFile* file);
@@ -50,16 +51,13 @@ void closeFile(zgdbFile* file);
 /* Функция для записи заголовка в файл */
 bool writeHeader(zgdbFile* file);
 
-/* Функция для записи новых (INDEX_NEW) индексов в файл. Возвращает количество записанных индексов */
-size_t writeIndexes(zgdbFile* file, size_t count, sortedList* list);
+/* Функция для записи новых (INDEX_NEW) индексов в файл. Возвращает false при неудаче */
+bool writeNewIndexes(zgdbFile* file, uint64_t count);
 
 /* Функция для получения индекса по его порядковому номеру. При неудаче возвращает индекс с флагом INDEX_NOT_EXIST */
 zgdbIndex getIndex(zgdbFile* file, uint64_t i);
 
 /* Функция, меняющая флаг и offset в индексе по его порядковому номеру. Возвращает false при неудаче */
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset);
-
-/* Функция для создания отсортированного списка индексов свободных мест в файле */
-sortedList* createList(zgdbFile* file);
 
 #endif

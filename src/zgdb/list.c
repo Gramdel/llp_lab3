@@ -13,24 +13,12 @@ listNode* createNode(uint64_t size, uint64_t indexNumber) {
     return node;
 }
 
-sortedList* initList() {
-    sortedList* list = malloc(sizeof(sortedList));
-    if (list) {
-        list->front = NULL;
-        list->back = NULL;
-    }
-    return list;
-}
-
 void destroyList(sortedList* list) {
-    if (list) {
-        listNode* curr = list->front;
-        while (curr) {
-            listNode* next = curr->next;
-            free(curr);
-            curr = next;
-        }
-        free(list);
+    listNode* curr = list->front;
+    while (curr) {
+        listNode* next = curr->next;
+        free(curr);
+        curr = next;
     }
 }
 

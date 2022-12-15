@@ -50,19 +50,11 @@ typedef struct __attribute__((packed)) {
     documentId id; // id, привязанный к документу
 } documentHeader;
 
-// TODO: не используется! Надо что-то сделать...
-/* Структура для документа (документа) */
-typedef struct document {
-    documentHeader* header;
-    element* elements;
-    size_t elementCount;
-} document;
-
 /* Структура для схемы данных */
 typedef struct {
     element* elements;
-    size_t elementCount;
-    size_t capacity;
+    uint64_t elementCount;
+    uint64_t capacity;
 } documentSchema;
 
 /* Функции для добавления данных в схему. Возвращают false при неудаче */
@@ -77,16 +69,16 @@ bool addStringToSchema(documentSchema* schema, char* key, char* value);
 bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value);
 
 /* Функция для инициализации схемы с определенным начальным размером. */
-documentSchema* createSchema(size_t capacity);
+documentSchema* createSchema(uint64_t capacity);
 
 /* Функция для уничтожения схемы */
 void destroySchema(documentSchema* schema);
 
 /* Функция для добавления нового документа в файл. Возвращает false при неудаче */
-bool writeDocument(zgdbFile* file, sortedList* list, documentSchema* schema);
+bool writeDocument(zgdbFile* file, documentSchema* schema);
 
 /* Функция для удаления документа из файла. Возвращает false при неудаче */
-bool removeDocument(zgdbFile* file, sortedList* list, uint64_t i);
+bool removeDocument(zgdbFile* file, uint64_t i);
 
 /* Функция для чтения элемента из документа по ключу. При неудаче возвращает элемент с типом TYPE_NOT_EXIST.
  * ВНИМАНИЕ: если элемент - строка, то обязателен вызов destroyStringElement, чтобы очистить память */
