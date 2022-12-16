@@ -65,27 +65,23 @@ bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
 
 bool writeGapSize(zgdbFile* file, int64_t diff) {
     // ВНИМАНИЕ: предполагается, что в момент вызова функции, мы уже находимся на нужной позиции в файле, и fseek делать не надо!
-    uint8_t count = 1;
+    uint8_t numberOfBytes = 0;
     /* Отметаем вариант с diff = 1, поскольку в этом случае, скажем так, единственный байт дырки будет говорить сам о себе,
      * и, соответственно, будет достаточно второго fwrite. */
     if (diff != 1) {
         if (diff <= UINT8_MAX) {
-            count = 2;
+            numberOfBytes = 1;
         } else if (diff <= UINT16_MAX) {
-            count = 3;
+            numberOfBytes = 2;
         } else if (diff <= UINT32_MAX) {
-            count = 4;
+            numberOfBytes = 4;
         } else {
-            count = 5;
+            numberOfBytes = 5;
         }
-        if (!fwrite(&count, sizeof(uint8_t), 1, file->f)) {
-            return false;
-        }
+        return fwrite(&numberOfBytes, sizeof(uint8_t), 1, file->f) &&
+               fwrite(&diff, sizeof(uint8_t), numberOfBytes, file->f);
     }
-    if (!fwrite(&diff, sizeof(uint8_t), count, file->f)) {
-        return false;
-    }
-    return true;
+    return fwrite(&numberOfBytes, sizeof(uint8_t), 1, file->f);
 }
 
 // TODO: может возвращать void? Или нужны проверки
