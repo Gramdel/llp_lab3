@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "format_public.h"
 #include "list.h"
 #include "../utils/optional.h"
 
@@ -25,11 +26,11 @@ typedef struct __attribute__((packed)) {
 } zgdbIndex;
 
 /* Структура, представляющая открытый ZGDB файл в памяти */
-typedef struct {
+struct zgdbFile {
     FILE* f; // указатель на FILE
     zgdbHeader header; // заголовок
     sortedList list; // отсортированный список индексов свободных мест в файле
-} zgdbFile;
+};
 
 /* Флаги для индексов */
 typedef enum {
@@ -38,15 +39,6 @@ typedef enum {
     INDEX_ALIVE = 2, // индекс привязан к использующемуся ("живому") блоку
     INDEX_DEAD = 3 // индекс привязан к неиспользующемуся ("мертвому") блоку
 } indexFlag;
-
-/* Функция для загрузки существующего файла */
-zgdbFile* loadFile(const char* filename);
-
-/* Функция для создания нового файла */
-zgdbFile* createFile(const char* filename);
-
-/* Функция для закрытия файла */
-void closeFile(zgdbFile* file);
 
 /* Функция для записи заголовка в файл */
 bool writeHeader(zgdbFile* file);

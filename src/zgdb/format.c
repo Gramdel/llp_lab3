@@ -1,5 +1,7 @@
 #include <malloc.h>
+
 #include "format.h"
+#include "document.h"
 
 bool writeHeader(zgdbFile* file) {
     rewind(file->f);
@@ -49,19 +51,32 @@ bool loadList(zgdbFile* file) {
     // ВНИМАНИЕ: предполагается, что в момент вызова функции хедер уже загружен, и fseek делать не надо
     int64_t pos = sizeof(zgdbHeader);
     for (uint64_t i = 0; i < file->header.indexCount; i++) {
+        pos += sizeof(zgdbIndex);
         zgdbIndex index;
         if (fread(&index, sizeof(zgdbIndex), 1, file->f)) {
-            pos += sizeof(zgdbIndex);
             if (index.flag != INDEX_ALIVE) {
-                uint64_t size = 0;
+                documentHeader header = { 0 };
                 if (index.flag == INDEX_DEAD) {
-                    // TODO: возможны ситуации, когда там мусор, а не size
-                    if (!fread(&size, 5, 1, file->f)) {
+                    fseeko64(file->f, index.offset, SEEK_SET);
+                    if (!fread(&header.mark, sizeof(uint8_t), 1, file->f)) {
                         return false;
+                    }
+                    // Определяем по метке, сколько байт надо считать в size (и нужно ли вообще):
+                    if (header.mark) {
+                        if (header.mark == DOCUMENT_START_MARK) {
+                            header.mark = 5;
+                        }
+                        uint64_t tmp = 0;
+                        if (!fread(&tmp, sizeof(uint8_t), header.mark, file->f)) {
+                            return false;
+                        }
+                        header.size = tmp;
+                    } else {
+                        header.size = 1;
                     }
                     fseeko64(file->f, pos, SEEK_SET);
                 }
-                insertNode(&file->list, createNode(size, i)); // TODO: обернуть в if?
+                insertNode(&file->list, createNode(header.size, i)); // TODO: обернуть в if?
             }
         } else {
             return false;

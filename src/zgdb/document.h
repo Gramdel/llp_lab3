@@ -3,9 +3,12 @@
 
 #define DOCUMENT_HAS_NO_PARENT 0xFFFFFFFFFF // максимальный номер индекса - (2^40-1), поэтому 2^40 можно использовать как флаг
 #define DOCUMENT_BUF_SIZE 500000000 // при перемещении большие документы будут перемещаться кусками по 500мб
+#define DOCUMENT_START_MARK 0xFF
 
+#include <stdint.h>
 #include <stdbool.h>
-#include "format.h"
+
+#include "format_public.h"
 
 /* Идентификаторы для типов данных в документе */
 typedef enum {

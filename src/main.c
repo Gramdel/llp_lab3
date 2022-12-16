@@ -63,6 +63,30 @@ int main(int argc, char** argv) {
     printf("%d\n", readElement(file, "thi3", 20).integerValue);
     removeDocument(file, 2);
     writeDocument(file, schema2); // 10
+    /*
+    writeDocument(file, schema1); // 0
+    writeDocument(file, schema2); // 1
+    writeDocument(file, schema3); // 2
+    writeDocument(file, schema4); // 3
+    writeDocument(file, schema2); // 4
+    writeDocument(file, schema2); // 5
+    writeDocument(file, schema2); // 6
+    writeDocument(file, schema2); // 7
+    writeDocument(file, schema2); // 8
+    writeDocument(file, schema2); // 9
+
+    writeDocument(file, schema1); // 0
+    writeDocument(file, schema2); // 1
+    writeDocument(file, schema3); // 2
+    writeDocument(file, schema4); // 3
+    writeDocument(file, schema2); // 4
+    writeDocument(file, schema2); // 5
+    writeDocument(file, schema2); // 6
+    writeDocument(file, schema2); // 7
+    writeDocument(file, schema2); // 8
+    writeDocument(file, schema2); // 9
+     */
+
 
     destroySchema(schema1);
     destroySchema(schema2);
