@@ -63,79 +63,103 @@ bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
     return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value }, key);
 }
 
-bool writeGapSize(zgdbFile* file, int64_t diff) {
+bool writeGapSize(zgdbFile* file, int64_t size) {
     // ВНИМАНИЕ: предполагается, что в момент вызова функции, мы уже находимся на нужной позиции в файле, и fseek делать не надо!
     uint8_t numberOfBytes = 0;
-    /* Отметаем вариант с diff = 1, поскольку в этом случае, скажем так, единственный байт дырки будет говорить сам о себе,
+    /* Отметаем вариант с size = 1, поскольку в этом случае, скажем так, единственный байт дырки будет говорить сам о себе,
      * и, соответственно, будет достаточно второго fwrite. */
-    if (diff != 1) {
-        if (diff <= UINT8_MAX) {
+    if (size != 1) {
+        if (size <= UINT8_MAX) {
             numberOfBytes = 1;
-        } else if (diff <= UINT16_MAX) {
+        } else if (size <= UINT16_MAX) {
             numberOfBytes = 2;
-        } else if (diff <= UINT32_MAX) {
+        } else if (size <= UINT32_MAX) {
             numberOfBytes = 4;
         } else {
             numberOfBytes = 5;
         }
         return fwrite(&numberOfBytes, sizeof(uint8_t), 1, file->f) &&
-               fwrite(&diff, sizeof(uint8_t), numberOfBytes, file->f);
+               fwrite(&size, sizeof(uint8_t), numberOfBytes, file->f);
     }
     return fwrite(&numberOfBytes, sizeof(uint8_t), 1, file->f);
 }
 
-// TODO: может возвращать void? Или нужны проверки
-// TODO: написать логику для использования дырок в качестве availableSpace
-// TODO: проверить работоспособность, подчистить
+// TODO: перенести в format.c
+bool moveData(zgdbFile* file, int64_t* oldPos, int64_t* newPos, uint64_t size) {
+    while (size) {
+        // Определяем размер буфера и аллоцируем его:
+        int64_t bufSize;
+        if (size > DOCUMENT_BUF_SIZE) {
+            bufSize = DOCUMENT_BUF_SIZE;
+        } else {
+            bufSize = (int64_t) size;
+        }
+        size -= bufSize;
+        uint8_t* buf = malloc(bufSize);
+
+        // Перемещаемся на прошлый адрес и заполняем буфер:
+        fseeko64(file->f, *oldPos, SEEK_SET);
+        if (!fread(buf, bufSize, 1, file->f)) {
+            free(buf);
+            return false;
+        }
+        *oldPos += bufSize;
+
+        // Перемещаемся на новый адрес и пишем из буфера:
+        fseeko64(file->f, *newPos, SEEK_SET);
+        if (!fwrite(buf, bufSize, 1, file->f)) {
+            free(buf);
+            return false;
+        }
+        *newPos += bufSize;
+        free(buf);
+    }
+    return true;
+}
+
 bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
-    fseeko64(file->f, (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * file->header.indexCount +
-                                 file->header.firstDocumentOffset), SEEK_SET);
-    int64_t oldPos = ftello64(file->f); // сохраняем позицию, с которой начинается первый документ
+    int64_t oldPos = (int64_t) (sizeof(zgdbHeader) + sizeof(zgdbIndex) * file->header.indexCount +
+                                file->header.firstDocumentOffset);
+    fseeko64(file->f, oldPos, SEEK_SET);
+
+    /* Перемещаем документы, пока места недостаточно. Изначально доступно file->header.firstDocumentOffset, поскольку
+     * перед документами могут быть неиспользуемые байты. */
     int64_t neededSpace = sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY;
-    int64_t availableSpace = file->header.firstDocumentOffset; // перед первым документом могут быть неиспользуемые байты
+    int64_t availableSpace = file->header.firstDocumentOffset;
     while (availableSpace < neededSpace) {
+        // Считываем метку:
         documentHeader header;
-        fread(&header, sizeof(documentHeader), 1, file->f);
-        if (header.mark != DOCUMENT_START_MARK) {
-            printf("Before: %d\n", availableSpace);
-            oldPos += header.mark + 1;
-            availableSpace += 1;
-            switch (header.mark) {
-                case 1:
-                    availableSpace += (uint8_t) header.size;
-                    break;
-                case 2:
-                    availableSpace += (uint16_t) header.size;
-                    break;
-                case 4:
-                    availableSpace += (uint32_t) header.size;
-                    break;
-                case 5:
-                    availableSpace += (int64_t) header.size;
-                    break;
+        if (!fread(&header.mark, sizeof(uint8_t), 1, file->f)) {
+            return false;
+        }
+
+        // Определяем, дырка у нас или документ. Если документ, то перемещаем его:
+        uint64_t tmp = 0;
+        if (header.mark == DOCUMENT_START_MARK) {
+            if (!fread(&tmp, sizeof(uint8_t), 5, file->f)) {
+                return false;
             }
-            printf("After: %d\n", availableSpace);
-        } else {
-            /* Если есть подходящая дырка, делаем следующие операции:
-            * 1. Сохраняем разницу между размерами дырки и документа
-            * 2. Забираем node из списка
-            * 3. Добавляем node обратно, изменив size на 0
-            * 4. Делаем соответствующий индекс в файле INDEX_NEW
-            * 5. Сохраняем из node смещение (fseek + ftell)
-            * Таким образом, INDEX_DEAD превращается в INDEX_NEW, а его бывший offset будет прикреплен к индексу
-            * переносимого документа.
-            * Если подходящих дырок нет (или список пустой), то перемещаемся в конец файла, смещение также сохраняем. */
+            header.size = tmp;
+            if (!fread(&tmp, sizeof(uint8_t), 5, file->f)) {
+                return false;
+            }
+            header.indexNumber = tmp;
+
+            /* Если есть подходящая дырка, в которую можно переместить документ, то нужно:
+             * 1. Сохранить разницу между размером дырки и документа
+             * 2. Забрать node из списка
+             * 3. Изменить флаг соответствующего node'у индекса в файле на INDEX_NEW
+             * 4. Добавить в список новый node с размером 0 и смещением, как у предыдущего node'а
+             * 5. Переместиться на смещение из node'а.
+             * Если подходящих дырок нет (или список пустой), то нужно переместиться в конец файла. */
             int64_t diff = 0;
             if (file->list.front && file->list.front->size >= header.size) {
                 diff = (int64_t) file->list.front->size - (int64_t) header.size;
                 listNode* node = popFront(&file->list);
-                node->size = 0;
-                insertNode(&file->list, node);
                 updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_NEW), not_present_int64_t());
-
-                zgdbIndex index = getIndex(file, node->indexNumber);
-                fseeko64(file->f, index.offset, SEEK_SET);
+                insertNode(&file->list, createNode(0, node->indexNumber));
+                fseeko64(file->f, getIndex(file, node->indexNumber).offset, SEEK_SET);
                 free(node);
             } else {
                 fseeko64(file->f, 0, SEEK_END);
@@ -143,32 +167,10 @@ bool moveFirstDocuments(zgdbFile* file) {
             int64_t newPos = ftello64(file->f);
             updateIndex(file, header.indexNumber, not_present_uint8_t(),
                         wrap_int64_t(newPos)); // обновляем offset в индексе переносимого документа
+            moveData(file, &oldPos, &newPos, header.size); // перемещаем документ
 
-            // Перемещаем документ:
-            fwrite(&header, sizeof(documentHeader), 1, file->f);
-            newPos += sizeof(documentHeader);
-            uint64_t bytesLeft = header.size - sizeof(documentHeader);
-            do {
-                int64_t bufSize;
-                if (bytesLeft > DOCUMENT_BUF_SIZE) {
-                    bufSize = DOCUMENT_BUF_SIZE;
-                } else {
-                    bufSize = (int64_t) bytesLeft;
-                }
-                bytesLeft -= bufSize;
-
-                uint8_t* buf = malloc(bufSize);
-                fseeko64(file->f, oldPos, SEEK_SET);
-                fread(buf, bufSize, 1, file->f);
-                oldPos += bufSize;
-                fseeko64(file->f, newPos, SEEK_SET);
-                fwrite(buf, bufSize, 1, file->f);
-                newPos += bufSize;
-                free(buf);
-            } while (bytesLeft);
-
-            /* Если найденная дырка больше, чем документ, то, после переноса документа, создаём на его месте INDEX_DEAD
-             * индекс для оставшейся части дырки */
+            /* Если найденная дырка была больше, чем документ, то, после переноса документа, создаём на его месте INDEX_DEAD
+             * индекс для оставшейся части дырки: */
             if (diff) {
                 insertNode(&file->list, createNode(diff, file->header.indexCount++));
                 writeGapSize(file, diff);
@@ -176,13 +178,22 @@ bool moveFirstDocuments(zgdbFile* file) {
                 updateIndex(file, file->header.indexCount - 1, wrap_uint8_t(INDEX_DEAD), wrap_int64_t(newPos));
                 availableSpace -= sizeof(zgdbIndex);
             }
-            availableSpace += (int64_t) header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
-            oldPos += sizeof(documentHeader);
+        } else {
+            if (header.mark) {
+                if (!fread(&tmp, sizeof(uint8_t), header.mark, file->f)) {
+                    return false;
+                }
+                header.size = tmp;
+            } else {
+                header.size = 1;
+            }
+            oldPos += (int64_t) header.size;
         }
+        availableSpace += (int64_t) header.size; // возможно переполнение, если ZGDB_DEFAULT_INDEX_CAPACITY будет слишком большим!
         fseeko64(file->f, oldPos, SEEK_SET); // перед следующей итерацией нужно вернуться к началу
     }
 
-    writeNewIndexes(file, availableSpace / sizeof(zgdbIndex));
+    writeNewIndexes(file, availableSpace / sizeof(zgdbIndex)); // записываем новые индексы
     file->header.firstDocumentOffset = availableSpace % sizeof(zgdbIndex); // сохраняем остаток места
     writeHeader(file);
     return true;
@@ -215,7 +226,7 @@ uint64_t calcDocumentSize(element* elements, uint64_t elementCount) {
     return size;
 }
 
-uint64_t writeElement(zgdbFile* file, element* el) {
+uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     uint64_t bytesWritten = 0;
     bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
     bytesWritten += fwrite(el->key, sizeof(char), 13, file->f) * sizeof(char);
@@ -235,9 +246,22 @@ uint64_t writeElement(zgdbFile* file, element* el) {
             bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            // TODO: может здесь записывать в хедеры детей инфу?
             tmp = el->documentValue;
             bytesWritten += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
+
+            // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
+            int64_t pos = ftello64(file->f);
+            zgdbIndex index = getIndex(file, el->documentValue);
+            if (index.flag != INDEX_ALIVE) {
+                return 0;
+            } else {
+                // Спускаемся к хедеру и пропускаем метку, размер, номер индекса. Записываем parentIndexNumber:
+                fseeko64(file->f, index.offset + 11, SEEK_SET);
+                if (!fwrite(&parentIndexNumber, 5, 1, file->f)) {
+                    return 0;
+                }
+            }
+            fseeko64(file->f, pos, SEEK_SET);
             break;
     }
     return bytesWritten;
@@ -278,17 +302,17 @@ bool writeDocument(zgdbFile* file, documentSchema* schema) {
         if (file->list.back->size != 0) {
             moveFirstDocuments(file);
         }
+        fseeko64(file->f, 0, SEEK_END);
         header.id.offset = ftello64(file->f);
         header.indexNumber = file->list.back->indexNumber;
         updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), wrap_int64_t(header.id.offset));
         popBack(&file->list);
-        fseeko64(file->f, 0, SEEK_END);
     }
 
     header.id.timestamp = (uint32_t) time(NULL);
     uint64_t bytesWritten = fwrite(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
     for (uint64_t i = 0; i < schema->elementCount; i++) {
-        bytesWritten += writeElement(file, schema->elements + i);
+        bytesWritten += writeElement(file, schema->elements + i, header.indexNumber);
     }
     if (diff > 0) {
         if (!writeGapSize(file, diff)) {
@@ -300,32 +324,49 @@ bool writeDocument(zgdbFile* file, documentSchema* schema) {
 
 bool removeDocument(zgdbFile* file, uint64_t i) {
     zgdbIndex index = getIndex(file, i);
-    if (index.flag != INDEX_NOT_EXIST) {
-        updateIndex(file, i, wrap_uint8_t(INDEX_DEAD), not_present_int64_t());
-        fseeko64(file->f, index.offset + 1, SEEK_SET); // пропускаем 1 байт - метку о начале документа
-        uint64_t size;
-        fread(&size, 5, 1, file->f); // uint64_t : 40 == 5 байт
-        insertNode(&file->list, createNode(size, i));
+    if (index.flag == INDEX_ALIVE) {
+        // Считываем хедер документа:
+        fseeko64(file->f, index.offset, SEEK_SET);
+        documentHeader header;
+        if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+            return false;
+        }
+
+        // Записываем вместо хедера документа "хедер дырки", изменяем флаг индекса документа и добавляем дырку в список:
+        fseeko64(file->f, index.offset, SEEK_SET);
+        if (!writeGapSize(file, (int64_t) header.size) ||
+            !updateIndex(file, i, wrap_uint8_t(INDEX_DEAD), not_present_int64_t())) {
+            return false;
+        }
+        insertNode(&file->list, createNode(header.size, i));
 
         // Ищем детей и удаляем в них информацию о родителе:
         for (uint64_t j = 0; j < file->header.indexCount; j++) {
             if (j != i) {
                 index = getIndex(file, j);
                 if (index.flag == INDEX_ALIVE) {
-                    documentHeader header;
+                    // Считываем хедер:
                     fseeko64(file->f, index.offset, SEEK_SET);
-                    fread(&header, sizeof(documentHeader), 1, file->f);
+                    if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+                        return false;
+                    }
+                    // Если удаляемый документ - родитель считанного, то перезаписываем хедер:
                     if (header.parentIndexNumber == i) {
                         header.parentIndexNumber = DOCUMENT_HAS_NO_PARENT;
                         fseeko64(file->f, index.offset, SEEK_SET);
-                        fwrite(&header, sizeof(documentHeader), 1, file->f);
+                        if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                            return false;
+                        }
                     }
+                } else if (index.flag == INDEX_NOT_EXIST) {
+                    return false;
                 }
             }
         }
-        return true;
+    } else if (index.flag == INDEX_NOT_EXIST) {
+        return false;
     }
-    return false;
+    return true;
 }
 
 element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
