@@ -416,7 +416,7 @@ element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
     return (element) { 0 };
 }
 
-void destroyStringElement(element el) {
+void destroyElement(element el) {
     if (el.type == TYPE_STRING) {
         free(el.stringValue.data);
     }

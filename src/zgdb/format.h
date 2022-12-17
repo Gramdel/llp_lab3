@@ -12,27 +12,20 @@
 #include "list.h"
 #include "../utils/optional.h"
 
-/* Структура для заголовка ZGDB файла */
-typedef struct __attribute__((packed)) {
+/* Структура для заголовка ZGDB файла. */
+typedef struct __attribute__((packed)) zgdbHeader {
     uint32_t fileType; // должны быть записаны 4 буквы в UTF-8: ZGDB
     uint8_t firstDocumentOffset; // смещение первого документа относительно конца индексов в файле, не больше 8!
     uint64_t indexCount : 40; // (5 байт) количество всех индексов файла
 } zgdbHeader;
 
-/* Структура для индекса в ZGDB файле */
-typedef struct __attribute__((packed)) {
-    uint8_t flag; // флаги (т.е. мета-информация об индексе)
-    int64_t offset; // смещение блока относительно начала файла
-} zgdbIndex;
-
-/* Структура, представляющая открытый ZGDB файл в памяти */
 struct zgdbFile {
     FILE* f; // указатель на FILE
     zgdbHeader header; // заголовок
     sortedList list; // отсортированный список индексов свободных мест в файле
 };
 
-/* Флаги для индексов */
+/* Флаги для индексов. */
 typedef enum {
     INDEX_NOT_EXIST = 0, // флаг, сигнализирующий об ошибке
     INDEX_NEW = 1, // индекс только что создан и ещё не привязан к блоку
@@ -40,16 +33,26 @@ typedef enum {
     INDEX_DEAD = 3 // индекс привязан к неиспользующемуся ("мертвому") блоку
 } indexFlag;
 
-/* Функция для записи заголовка в файл */
+/* Структура для индекса в ZGDB файле. */
+typedef struct __attribute__((packed)) zgdbIndex {
+    uint8_t flag; // флаги (т.е. мета-информация об индексе)
+    int64_t offset; // смещение блока относительно начала файла
+} zgdbIndex;
+
+/* Функция для записи заголовка в файл.
+ * Возвращает false при неудаче. */
 bool writeHeader(zgdbFile* file);
 
-/* Функция для записи новых (INDEX_NEW) индексов в файл. Возвращает false при неудаче */
+/* Функция для записи новых (INDEX_NEW) индексов в файл.
+ * Возвращает false при неудаче. */
 bool writeNewIndexes(zgdbFile* file, uint64_t count);
 
-/* Функция для получения индекса по его порядковому номеру. При неудаче возвращает индекс с флагом INDEX_NOT_EXIST */
+/* Функция для получения индекса по его порядковому номеру.
+ * Возвращает индекс с флагом INDEX_NOT_EXIST при неудаче. */
 zgdbIndex getIndex(zgdbFile* file, uint64_t i);
 
-/* Функция, меняющая флаг и offset в индексе по его порядковому номеру. Возвращает false при неудаче */
+/* Функция, меняющая флаг и (или) offset в индексе по его порядковому номеру.
+ * Возвращает false при неудаче. */
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset);
 
 #endif
