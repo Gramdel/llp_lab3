@@ -5,64 +5,6 @@
 #include "format.h"
 #include "document.h"
 
-documentSchema* createSchema(uint64_t capacity) {
-    documentSchema* schema = malloc(sizeof(documentSchema));
-    if (schema) {
-        schema->elements = malloc(sizeof(element) * capacity);
-        if (schema->elements) {
-            schema->elementCount = 0;
-            schema->capacity = capacity;
-        }
-    }
-    return schema;
-}
-
-void destroySchema(documentSchema* schema) {
-    if (schema) {
-        if (schema->elements) {
-            free(schema->elements);
-        }
-        free(schema);
-    }
-}
-
-bool addElementToSchema(documentSchema* schema, element el, const char* key) {
-    if (schema->elementCount == schema->capacity) {
-        element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
-        if (!newElements) {
-            return false;
-        }
-        memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
-        free(schema->elements);
-        schema->elements = newElements;
-    }
-    memset(el.key, 0, 13);
-    strcpy(el.key, key);
-    schema->elements[schema->elementCount++] = el;
-    return true;
-}
-
-bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
-}
-
-bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
-}
-
-bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
-}
-
-bool addStringToSchema(documentSchema* schema, char* key, char* value) {
-    return addElementToSchema(schema,
-                              (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }}, key);
-}
-
-bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value }, key);
-}
-
 bool writeGapSize(zgdbFile* file, int64_t size) {
     // ВНИМАНИЕ: предполагается, что в момент вызова функции, мы уже находимся на нужной позиции в файле, и fseek делать не надо!
     uint8_t numberOfBytes = 0;
@@ -230,7 +172,6 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     uint64_t bytesWritten = 0;
     bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
     bytesWritten += fwrite(el->key, sizeof(char), 13, file->f) * sizeof(char);
-    uint64_t tmp; // для битового поля (documentValue)
     switch (el->type) {
         case TYPE_INT:
             bytesWritten += fwrite(&el->integerValue, sizeof(int32_t), 1, file->f) * sizeof(int32_t);
@@ -246,7 +187,12 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
             bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            tmp = el->documentValue;
+            // Документ не может быть сам себе родителем и ребёнком, поэтому:
+            if (el->documentValue == parentIndexNumber) {
+                return 0;
+            }
+
+            uint64_t tmp = el->documentValue; // для битового поля
             bytesWritten += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
 
             // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
@@ -255,7 +201,14 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
             if (index.flag != INDEX_ALIVE) {
                 return 0;
             } else {
-                // Спускаемся к хедеру и пропускаем метку, размер, номер индекса. Записываем parentIndexNumber:
+                /* Спускаемся к хедеру ребёнка и пропускаем метку, размер, номер индекса.
+                 * Считываем parentIndexNumber, если он не равен DOCUMENT_NOT_EXIST, то завершаем выполнение: */
+                fseeko64(file->f, index.offset + 11, SEEK_SET);
+                if (!fread(&tmp, 5, 1, file->f) || tmp != DOCUMENT_NOT_EXIST) {
+                    return 0;
+                }
+
+                // Снова спускаемся к хедеру и пропускаем метку, размер, номер индекса. Записываем parentIndexNumber:
                 fseeko64(file->f, index.offset + 11, SEEK_SET);
                 if (!fwrite(&parentIndexNumber, 5, 1, file->f)) {
                     return 0;
@@ -267,11 +220,11 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     return bytesWritten;
 }
 
-bool writeDocument(zgdbFile* file, documentSchema* schema) {
+uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
     documentHeader header;
     header.size = calcDocumentSize(schema->elements, schema->elementCount);
     header.mark = DOCUMENT_START_MARK;
-    header.parentIndexNumber = DOCUMENT_HAS_NO_PARENT; // указывает на то, что родителя нет
+    header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
 
     if (!file->list.front) {
         moveFirstDocuments(file); // сразу выделяем индексы, если список пустой
@@ -316,14 +269,14 @@ bool writeDocument(zgdbFile* file, documentSchema* schema) {
     }
     if (diff > 0) {
         if (!writeGapSize(file, diff)) {
-            return false;
+            return DOCUMENT_NOT_EXIST;
         }
     }
-    return bytesWritten == header.size;
+    return bytesWritten == header.size ? header.indexNumber : DOCUMENT_NOT_EXIST;
 }
 
-bool removeDocument(zgdbFile* file, uint64_t i) {
-    zgdbIndex index = getIndex(file, i);
+bool removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber) {
+    zgdbIndex index = getIndex(file, childIndexNumber);
     if (index.flag == INDEX_ALIVE) {
         // Считываем хедер документа:
         fseeko64(file->f, index.offset, SEEK_SET);
@@ -332,33 +285,24 @@ bool removeDocument(zgdbFile* file, uint64_t i) {
             return false;
         }
 
+        /* Проверка на то, совпадает ли родитель удаляемого документа с parentIndexNumber.
+         * При попытке удалить вложенный документ напрямую (а не путем удаления его родителя), должен вернуться false: */
+        if (parentIndexNumber != header.parentIndexNumber) {
+            return parentIndexNumber != DOCUMENT_NOT_EXIST;
+        }
+
         // Записываем вместо хедера документа "хедер дырки", изменяем флаг индекса документа и добавляем дырку в список:
         fseeko64(file->f, index.offset, SEEK_SET);
         if (!writeGapSize(file, (int64_t) header.size) ||
-            !updateIndex(file, i, wrap_uint8_t(INDEX_DEAD), not_present_int64_t())) {
+            !updateIndex(file, childIndexNumber, wrap_uint8_t(INDEX_DEAD), not_present_int64_t())) {
             return false;
         }
-        insertNode(&file->list, createNode(header.size, i));
+        insertNode(&file->list, createNode(header.size, childIndexNumber));
 
-        // Ищем детей и удаляем в них информацию о родителе:
-        for (uint64_t j = 0; j < file->header.indexCount; j++) {
-            if (j != i) {
-                index = getIndex(file, j);
-                if (index.flag == INDEX_ALIVE) {
-                    // Считываем хедер:
-                    fseeko64(file->f, index.offset, SEEK_SET);
-                    if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
-                        return false;
-                    }
-                    // Если удаляемый документ - родитель считанного, то перезаписываем хедер:
-                    if (header.parentIndexNumber == i) {
-                        header.parentIndexNumber = DOCUMENT_HAS_NO_PARENT;
-                        fseeko64(file->f, index.offset, SEEK_SET);
-                        if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
-                            return false;
-                        }
-                    }
-                } else if (index.flag == INDEX_NOT_EXIST) {
+        // Удаляем детей документа:
+        for (uint64_t i = 0; i < file->header.indexCount; i++) {
+            if (i != childIndexNumber) {
+                if (!removeEmbeddedDocument(file, i, childIndexNumber)) {
                     return false;
                 }
             }
@@ -369,55 +313,266 @@ bool removeDocument(zgdbFile* file, uint64_t i) {
     return true;
 }
 
-element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
-    zgdbIndex index = getIndex(file, i);
-    if (index.flag == INDEX_ALIVE) {
-        bool matchFound = false;
-        documentHeader header;
-        fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
-        uint64_t bytesRead = fread(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
-        element el;
-        while (!matchFound && bytesRead < header.size) {
-            bytesRead += fread(&el.type, sizeof(uint8_t), 1, file->f);
-            bytesRead += fread(&el.key, sizeof(char), 13, file->f) * sizeof(char);
-            uint64_t tmp; // для битового поля (documentValue)
-            matchFound = strcmp(el.key, neededKey) == 0;
-            switch (el.type) {
-                case TYPE_INT:
-                    bytesRead += fread(&el.integerValue, sizeof(int32_t), 1, file->f) * sizeof(int32_t);
-                    break;
-                case TYPE_DOUBLE:
-                    bytesRead += fread(&el.doubleValue, sizeof(double), 1, file->f) * sizeof(double);
-                    break;
-                case TYPE_BOOLEAN:
-                    bytesRead += fread(&el.booleanValue, sizeof(uint8_t), 1, file->f);
-                    break;
-                case TYPE_STRING:
-                    if (matchFound) {
-                        bytesRead += fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
-                        el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
-                        bytesRead += fread(&el.stringValue.data, sizeof(char), el.stringValue.size, file->f);
-                    } else {
-                        bytesRead += fread(&el.integerValue, sizeof(uint32_t), 1, file->f) * sizeof(uint32_t);
-                        fseeko64(file->f, el.integerValue, SEEK_CUR);
-                        bytesRead += el.integerValue;
-                    }
-                    break;
-                case TYPE_EMBEDDED_DOCUMENT:
-                    bytesRead = fread(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
-                    el.documentValue = tmp;
-                    break;
-            }
-        }
-        if (matchFound) {
-            return el;
+bool removeDocument(zgdbFile* file, uint64_t i) {
+    return removeEmbeddedDocument(file, i, DOCUMENT_NOT_EXIST);
+}
+
+documentSchema* createSchema(uint64_t capacity) {
+    documentSchema* schema = malloc(sizeof(documentSchema));
+    if (schema) {
+        schema->elements = malloc(sizeof(element) * capacity);
+        if (schema->elements) {
+            schema->elementCount = 0;
+            schema->capacity = capacity;
         }
     }
-    return (element) { 0 };
+    return schema;
+}
+
+void destroySchema(documentSchema* schema) {
+    if (schema) {
+        if (schema->elements) {
+            free(schema->elements);
+        }
+        free(schema);
+    }
+}
+
+bool addElementToSchema(documentSchema* schema, element el, const char* key) {
+    if (schema->elementCount == schema->capacity) {
+        element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
+        if (!newElements) {
+            return false;
+        }
+        memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
+        free(schema->elements);
+        schema->elements = newElements;
+    }
+    memset(el.key, 0, 13);
+    strcpy(el.key, key);
+    schema->elements[schema->elementCount++] = el;
+    return true;
+}
+
+bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
+}
+
+bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
+}
+
+bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
+}
+
+bool addStringToSchema(documentSchema* schema, char* key, char* value) {
+    return addElementToSchema(schema,
+                              (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }}, key);
+}
+
+bool addDocumentToSchema(documentSchema* schema, char* key, uint64_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value }, key);
+}
+
+// TODO: подчистить?
+elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
+    zgdbIndex index = getIndex(file, i);
+    if (index.flag == INDEX_ALIVE) {
+        fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
+        documentHeader header;
+        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+            uint64_t bytesRead = sizeof(documentHeader);
+            element el;
+            while (bytesRead < header.size) {
+                if (!fread(&el.type, sizeof(uint8_t), 1, file->f) || fread(&el.key, sizeof(char), 13, file->f) != 13) {
+                    goto exit;
+                } else if (strcmp(el.key, neededKey) == 0) {
+                    fseeko64(file->f, 0, SEEK_CUR); // без этого вызова любой fwrite будет пытаться записать в eof!
+                    return el.type;
+                } else {
+                    bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
+                    switch (el.type) {
+                        case TYPE_INT:
+                            if (fseeko64(file->f, sizeof(int32_t), SEEK_CUR) != 0) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(int32_t);
+                            break;
+                        case TYPE_DOUBLE:
+                            if (fseeko64(file->f, sizeof(double), SEEK_CUR) != 0) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(double);
+                            break;
+                        case TYPE_BOOLEAN:
+                            if (fseeko64(file->f, sizeof(uint8_t), SEEK_CUR) != 0) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(uint8_t);
+                            break;
+                        case TYPE_STRING:
+                            if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f) ||
+                                fseeko64(file->f, el.stringValue.size, SEEK_CUR) != 0) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
+                            break;
+                        case TYPE_EMBEDDED_DOCUMENT:
+                            if (fseeko64(file->f, 5, SEEK_CUR) != 0) {
+                                goto exit;
+                            }
+                            bytesRead += 5;
+                            break;
+                    }
+                }
+            }
+        }
+    }
+    exit:
+    return TYPE_NOT_EXIST;
+}
+
+element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
+    uint64_t tmp; // для битового поля (documentValue)
+    element el;
+    strcpy(el.key, neededKey);
+    el.type = navigateToElement(file, neededKey, i);
+    switch (el.type) {
+        case TYPE_INT:
+            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
+                el.type = TYPE_NOT_EXIST;
+            }
+            break;
+        case TYPE_DOUBLE:
+            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
+                el.type = TYPE_NOT_EXIST;
+            }
+            break;
+        case TYPE_BOOLEAN:
+            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
+                el.type = TYPE_NOT_EXIST;
+            }
+            break;
+        case TYPE_STRING:
+            if (fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
+                if (el.stringValue.data) {
+                    if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) == el.stringValue.size) {
+                        break;
+                    }
+                    free(el.stringValue.data);
+                }
+            }
+            el.type = TYPE_NOT_EXIST;
+            break;
+        case TYPE_EMBEDDED_DOCUMENT:
+            if (!fread(&tmp, 5, 1, file->f)) {
+                el.type = TYPE_NOT_EXIST;
+            }
+            el.documentValue = tmp;
+            break;
+    }
+    return el;
 }
 
 void destroyElement(element el) {
     if (el.type == TYPE_STRING) {
         free(el.stringValue.data);
     }
+}
+
+void printElement(element el) {
+    switch (el.type) {
+        case TYPE_NOT_EXIST:
+            printf("Element does not exist!\n");
+            break;
+        case TYPE_INT:
+            printf("key: \"%s\", integerValue: %d\n", el.key, el.integerValue);
+            break;
+        case TYPE_DOUBLE:
+            printf("key: \"%s\", doubleValue: %f\n", el.key, el.doubleValue);
+            break;
+        case TYPE_BOOLEAN:
+            printf("key: \"%s\", booleanValue: %s\n", el.key, el.booleanValue ? "true" : "false");
+            break;
+        case TYPE_STRING:
+            printf("key: \"%s\", stringValue: \"%s\"\n", el.key, el.stringValue.data);
+            break;
+        case TYPE_EMBEDDED_DOCUMENT:
+            printf("key: \"%s\", documentValue: %l\n", el.key, el.documentValue);
+            break;
+    }
+}
+
+elementType getTypeOfElement(element el) {
+    return el.type;
+}
+
+int32_t getIntegerValue(element el) {
+    return el.integerValue;
+}
+
+double getDoubleValue(element el) {
+    return el.doubleValue;
+}
+
+uint8_t getBooleanValue(element el) {
+    return el.booleanValue;
+}
+
+// TODO: может тупо возвращать char* ?
+str getStringValue(element el) {
+    return el.stringValue;
+}
+
+uint64_t getDocumentValue(element el) {
+    return el.documentValue;
+}
+
+
+bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, uint64_t i) {
+    return navigateToElement(file, neededKey, i) == TYPE_INT && fwrite(&value, sizeof(int32_t), 1, file->f);
+}
+
+bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, uint64_t i) {
+    return navigateToElement(file, neededKey, i) == TYPE_DOUBLE && fwrite(&value, sizeof(double), 1, file->f);
+}
+
+bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, uint64_t i) {
+    return navigateToElement(file, neededKey, i) == TYPE_BOOLEAN && fwrite(&value, sizeof(uint8_t), 1, file->f);
+}
+
+bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i) {
+    // TODO: написать логику работы с изменением размера строки
+    return true;
+}
+
+bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, uint64_t i) {
+    // Спускаемся к нужному элементу по ключу:
+    if (navigateToElement(file, neededKey, i) == TYPE_EMBEDDED_DOCUMENT) {
+        // Считываем предыдущее значение поля:
+        int64_t pos = ftello64(file->f);
+        uint64_t oldChildIndexNumber;
+        if (fread(&oldChildIndexNumber, 5, 1, file->f)) {
+            // Получаем индекс нового ребёнка, если он "жив", продолжаем:
+            zgdbIndex index = getIndex(file, value);
+            if (index.flag == INDEX_ALIVE) {
+                /* Спускаемся к хедеру нового ребёнка и пропускаем метку, размер, номер индекса.
+                 * Считываем parentIndexNumber, если он равен DOCUMENT_NOT_EXIST, то продолжаем: */
+                fseeko64(file->f, index.offset + 11, SEEK_SET);
+                uint64_t parentIndexNumber;
+                if (fread(&parentIndexNumber, 5, 1, file->f) && parentIndexNumber == DOCUMENT_NOT_EXIST) {
+                    /* Записываем в нового ребёнка номер индекса родителя (i), затем удаляем бывшего ребёнка: */
+                    fseeko64(file->f, index.offset + 11, SEEK_SET);
+                    if (fwrite(&i, 5, 1, file->f) && removeEmbeddedDocument(file, oldChildIndexNumber, i)) {
+                        // Возвращаемся к обновляемому полю и записываем новое значение:
+                        fseeko64(file->f, pos, SEEK_SET);
+                        return fwrite(&value, 5, 1, file->f);
+                    }
+                }
+            }
+        }
+    }
+    return false;
 }

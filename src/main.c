@@ -26,6 +26,7 @@ int main(int argc, char** argv) {
         addIntegerToSchema(schema2, "sec1", 123);
         addIntegerToSchema(schema2, "sec2", 456);
         addIntegerToSchema(schema2, "sec3", 789);
+        addDocumentToSchema(schema2, "testDoc", 9);
     }
 
     documentSchema* schema3 = createSchema(2); // size 112
@@ -48,21 +49,22 @@ int main(int argc, char** argv) {
         addDocumentToSchema(schema4, "testDoc", 0);
     }
 
-    writeDocument(file, schema1); // 0
-    writeDocument(file, schema3); // 1
-    writeDocument(file, schema4); // 2
-    writeDocument(file, schema2); // 3
-    writeDocument(file, schema2); // 4
-    writeDocument(file, schema2); // 5
-    writeDocument(file, schema2); // 6
-    writeDocument(file, schema2); // 7
-    writeDocument(file, schema2); // 8
-    writeDocument(file, schema2); // 9
+    printf("i: %d\n", writeDocument(file, schema1)); // 0
+    printf("i: %d\n", writeDocument(file, schema3)); // 1
+    printf("i: %d\n", writeDocument(file, schema4)); // 2
+    printf("i: %d\n", writeDocument(file, schema2)); // 3
+    printf("i: %d\n", writeDocument(file, schema2)); // 4
+    printf("i: %d\n", writeDocument(file, schema2)); // 5
+    printf("i: %d\n", writeDocument(file, schema2)); // 6
+    printf("i: %d\n", writeDocument(file, schema2)); // 7
+    printf("i: %d\n", writeDocument(file, schema2)); // 8
+    printf("i: %d\n", writeDocument(file, schema2)); // 9
 
     //*
-    printf("%d\n", readElement(file, "thi3", 20).integerValue);
-    removeDocument(file, 2);
-    //*
+    updateDocumentValue(file, "testDoc", 1, 2);
+    //printf("removed? %d\n", removeDocument(file, 2));
+
+    /*
     writeDocument(file, schema2); // 10
     //*
 
@@ -89,6 +91,26 @@ int main(int argc, char** argv) {
     writeDocument(file, schema2); // 9
     //*/
 
+    /*
+    updateIntegerValue(file, "fou2", 808, 2);
+    updateBooleanValue(file, "isFirst", false, 2);
+    updateDoubleValue(file, "testDouble", -2.5, 2);
+    updateDocumentValue(file, "testDoc", 2, 2);
+
+    element el1 = readElement(file, "fou2", 2);
+    element el2 = readElement(file, "isFirst", 2);
+    element el3 = readElement(file, "testDouble", 2);
+    element el4 = readElement(file, "testString", 2);
+    element el5 = readElement(file, "testDoc", 2);
+
+    printElement(el1);
+    printElement(el2);
+    printElement(el3);
+    printElement(el4);
+    printElement(el5);
+
+    destroyElement(el4);
+    //*/
 
     destroySchema(schema1);
     destroySchema(schema2);

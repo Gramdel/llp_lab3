@@ -1,6 +1,8 @@
 #ifndef _DOCUMENT_PUBLIC_H_
 #define _DOCUMENT_PUBLIC_H_
 
+#define DOCUMENT_NOT_EXIST 0xFFFFFFFFFF // максимальный номер индекса - (2^40-1), поэтому 2^40 можно использовать как флаг
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -26,15 +28,19 @@ typedef struct element element;
 /* Структура для схемы данных. */
 typedef struct documentSchema documentSchema;
 
-/* Функция для добавления нового документа в файл.
- * Возвращает false при неудаче. */
-bool writeDocument(zgdbFile* file, documentSchema* schema);
+/* Функция для добавления нового документа в файл. Если у документа есть "дети", то спускается в их заголовки и
+ * записывает в них информацию об индексе добавляемого документа (родителя).
+ * ВНИМАНИЕ: Если к моменту вызова этой функции дети не были записаны в файл, вернёт DOCUMENT_NOT_EXIST.
+ * ВНИМАНИЕ: Если у ребёнка уже есть родитель, вернёт DOCUMENT_NOT_EXIST.
+ * Возвращает номер присвоенного индекса или DOCUMENT_NOT_EXIST (в случае ошибки). */
+uint64_t writeDocument(zgdbFile* file, documentSchema* schema);
 
 /* Функция для удаления документа из файла.
  * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, uint64_t i);
 
-/* Функция для инициализации схемы с размером, равным аргументу. */
+/* Функция для создания схемы с изначальной вместимостью, равной аргументу.
+ * Возвращает NULL при неудаче. */
 documentSchema* createSchema(uint64_t capacity);
 
 /* Функция для уничтожения схемы. */
@@ -93,22 +99,22 @@ uint64_t getDocumentValue(element el);
 
 /* Функция для обновления значения у элемента типа TYPE_INT.
  * Возвращает false при неудаче. */
-bool updateIntegerValue(documentSchema* schema, char* neededKey, int32_t value, uint64_t i);
+bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, uint64_t i);
 
 /* Функция для обновления значения у элемента типа TYPE_DOUBLE.
  * Возвращает false при неудаче. */
-bool updateDoubleValue(documentSchema* schema, char* neededKey, double value, uint64_t i);
+bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, uint64_t i);
 
 /* Функция для обновления значения у элемента типа TYPE_BOOLEAN.
  * Возвращает false при неудаче. */
-bool updateBooleanValue(documentSchema* schema, char* neededKey, uint8_t value, uint64_t i);
+bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, uint64_t i);
 
 /* Функция для обновления значения у элемента типа TYPE_STRING.
  * Возвращает false при неудаче. */
-bool updateStringValue(documentSchema* schema, char* neededKey, char* value, uint64_t i);
+bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i);
 
 /* Функция для обновления значения у элемента типа TYPE_EMBEDDED_DOCUMENT.
  * Возвращает false при неудаче. */
-bool updateDocumentValue(documentSchema* schema, char* neededKey, uint64_t value, uint64_t i);
+bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, uint64_t i);
 
 #endif
