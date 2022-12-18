@@ -544,7 +544,112 @@ bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, uint64_t
 }
 
 bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i) {
-    // TODO: написать логику работы с изменением размера строки
+    // Сразу выделяем индексы, если список пустой:
+    if (!file->list.front && !moveFirstDocuments(file)) {
+        return false;
+    }
+
+    // Спускаемся к нужному элементу по ключу. Если это не строка, завершаем выполнение:
+    if (navigateToElement(file, neededKey, i) != TYPE_STRING) {
+        return false;
+    }
+    int64_t posOfValue = ftello64(file->f);
+
+    // Считываем предыдущий размер строки:
+    uint32_t newSize = strlen(value) + 1;
+    uint32_t oldSize;
+    if (!fread(&oldSize, sizeof(uint32_t), 1, file->f)) {
+        return false;
+    }
+
+    // Получаем индекс документа:
+    zgdbIndex index = getIndex(file, i);
+    if (index.flag != INDEX_ALIVE) {
+        return false;
+    }
+
+    // Перемещаемся к началу обновляемого документа и считываем его заголовок:
+    fseeko64(file->f, index.offset, SEEK_SET);
+    documentHeader header;
+    if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+        return false;
+    }
+
+    // Решаем, что делать, в зависимости от изменения размера строки:
+    int64_t diff = (int64_t) newSize - (int64_t) oldSize;
+    if (diff > 0) {
+        /*
+        int64_t diff = (int64_t) file->list.front->size - (int64_t) header.size;
+        if (diff >= 0) {
+            zgdbIndex index = getIndex(file, file->list.front->indexNumber);
+            header.id.offset = index.offset;
+            header.indexNumber = file->list.front->indexNumber;
+            updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), not_present_int64_t());
+            popFront(&file->list);
+
+            if (diff) {
+                if (!file->list.back || file->list.back->size) {
+                    moveFirstDocuments(file); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
+                }
+                listNode* node = popBack(&file->list);
+                updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD),
+                            wrap_int64_t(index.offset + (int64_t) header.size));
+                node->size = diff;
+                insertNode(&file->list, node);
+            }
+
+            fseeko64(file->f, header.id.offset, SEEK_SET);
+        } else {
+            // В любом случае будем писать в конец файла, но возможно, что нет INDEX_NEW индексов, поэтому выделяем новые
+            if (file->list.back->size != 0) {
+                moveFirstDocuments(file);
+            }
+            fseeko64(file->f, 0, SEEK_END);
+            header.id.offset = ftello64(file->f);
+            header.indexNumber = file->list.back->indexNumber;
+            updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), wrap_int64_t(header.id.offset));
+            popBack(&file->list);
+        }
+        */
+    } else {
+        // Возвращаемся к началу value, перезаписываем размер строки и саму строку:
+        fseeko64(file->f, posOfValue, SEEK_SET);
+        if (!fwrite(&newSize, sizeof(uint32_t), 1, file->f) ||
+            fwrite(value, sizeof(char), newSize, file->f) != newSize) {
+            return false;
+        }
+
+        // Если появилось свободное место, перемещаем остаток документа так, чтобы дырка оказалась в конце:
+        if (diff < 0) {
+            // Перемещаем остаток, если он не в конце документа:
+            int64_t newPos = ftello64(file->f);
+            int64_t oldPos = newPos - diff;
+            if (oldPos != index.offset + header.size &&
+                !moveData(file, &oldPos, &newPos, index.offset + header.size - oldPos)) {
+                return false;
+            }
+
+            // После перемещения остатка newPos будет указывать на начало новой дырки. Запишем её размер:
+            if (!writeGapSize(file, -diff)) {
+                return false;
+            }
+
+            // Перезаписываем размер документа:
+            header.size += diff;
+            fseeko64(file->f, index.offset, SEEK_SET);
+            if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                return false;
+            }
+
+            // Добавляем дырку в список:
+            listNode* node = popBack(&file->list);
+            if (!updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD), wrap_int64_t(newPos))) {
+                return false;
+            }
+            node->size = -diff;
+            insertNode(&file->list, node);
+        }
+    }
     return true;
 }
 

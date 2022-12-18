@@ -17,6 +17,7 @@ int main(int argc, char** argv) {
 
     documentSchema* schema1 = createSchema(2); // size 64
     if (schema1) {
+        addStringToSchema(schema1, "testString", "I AM STRING");
         addIntegerToSchema(schema1, "first1", 111);
         addIntegerToSchema(schema1, "first2", 222);
     }
@@ -26,7 +27,6 @@ int main(int argc, char** argv) {
         addIntegerToSchema(schema2, "sec1", 123);
         addIntegerToSchema(schema2, "sec2", 456);
         addIntegerToSchema(schema2, "sec3", 789);
-        addDocumentToSchema(schema2, "testDoc", 9);
     }
 
     documentSchema* schema3 = createSchema(2); // size 112
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     printf("i: %d\n", writeDocument(file, schema2)); // 9
 
     //*
-    updateDocumentValue(file, "testDoc", 1, 2);
+    updateStringValue(file, "testString", "I AM STRI", 0);
     //printf("removed? %d\n", removeDocument(file, 2));
 
     /*
