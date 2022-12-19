@@ -578,39 +578,42 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
     // Решаем, что делать, в зависимости от изменения размера строки:
     int64_t diff = (int64_t) newSize - (int64_t) oldSize;
     if (diff > 0) {
-        /*
-        int64_t diff = (int64_t) file->list.front->size - (int64_t) header.size;
-        if (diff >= 0) {
-            zgdbIndex index = getIndex(file, file->list.front->indexNumber);
-            header.id.offset = index.offset;
-            header.indexNumber = file->list.front->indexNumber;
-            updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), not_present_int64_t());
-            popFront(&file->list);
+        // Если документ НЕ последний, то ищем ему новое место.
+        fseeko64(file->f, 0, SEEK_END);
+        if (ftello64(file->f) != index.offset + header.size) {
+            int64_t diffWithGap = (int64_t) file->list.front->size - (int64_t) header.size;
+            if (diffWithGap >= 0) {
+                zgdbIndex gapIndex = getIndex(file, file->list.front->indexNumber);
+                updateIndex(file, header.indexNumber, not_present_uint8_t(), wrap_int64_t(gapIndex.offset));
+                popFront(&file->list);
 
-            if (diff) {
-                if (!file->list.back || file->list.back->size) {
-                    moveFirstDocuments(file); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
+                // TODO: дальше код собьёт все оффсеты, полученные ранее. Нужно бы это как-то пофиксить.
+                if (diffWithGap) {
+                    if (!file->list.back || file->list.back->size) {
+                        moveFirstDocuments(file); // если нет хвоста или хвост - INDEX_DEAD, то выделяем новые индексы
+                    }
+                    listNode* node = popBack(&file->list);
+                    updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD),
+                                wrap_int64_t(index.offset + (int64_t) header.size));
+                    node->size = diffWithGap;
+                    insertNode(&file->list, node);
                 }
-                listNode* node = popBack(&file->list);
-                updateIndex(file, node->indexNumber, wrap_uint8_t(INDEX_DEAD),
-                            wrap_int64_t(index.offset + (int64_t) header.size));
-                node->size = diff;
-                insertNode(&file->list, node);
-            }
 
-            fseeko64(file->f, header.id.offset, SEEK_SET);
-        } else {
-            // В любом случае будем писать в конец файла, но возможно, что нет INDEX_NEW индексов, поэтому выделяем новые
-            if (file->list.back->size != 0) {
-                moveFirstDocuments(file);
+                fseeko64(file->f, header.id.offset, SEEK_SET);
+            } else {
+                // В любом случае будем писать в конец файла, но возможно, что нет INDEX_NEW индексов, поэтому выделяем новые
+                if (file->list.back->size != 0) {
+                    moveFirstDocuments(file);
+                }
+                fseeko64(file->f, 0, SEEK_END);
+                header.id.offset = ftello64(file->f);
+                header.indexNumber = file->list.back->indexNumber;
+                updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), wrap_int64_t(header.id.offset));
+                popBack(&file->list);
             }
-            fseeko64(file->f, 0, SEEK_END);
-            header.id.offset = ftello64(file->f);
-            header.indexNumber = file->list.back->indexNumber;
-            updateIndex(file, header.indexNumber, wrap_uint8_t(INDEX_ALIVE), wrap_int64_t(header.id.offset));
-            popBack(&file->list);
         }
-        */
+
+
     } else {
         // Возвращаемся к началу value, перезаписываем размер строки и саму строку:
         fseeko64(file->f, posOfValue, SEEK_SET);
