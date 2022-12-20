@@ -15,7 +15,8 @@
 /* Структура для заголовка ZGDB файла. */
 typedef struct __attribute__((packed)) zgdbHeader {
     uint32_t fileType; // должны быть записаны 4 буквы в UTF-8: ZGDB
-    uint8_t firstDocumentOffset; // смещение первого документа относительно конца индексов в файле, не больше 8!
+    int64_t fileSize; // размер файла
+    uint8_t firstDocumentOffset; // смещение первого документа относительно конца индексов; остаток от деления на 9, поэтому не больше 8
     uint64_t indexCount : 40; // (5 байт) количество всех индексов файла
 } zgdbHeader;
 
@@ -44,6 +45,7 @@ typedef struct __attribute__((packed)) zgdbIndex {
 bool writeHeader(zgdbFile* file);
 
 /* Функция для записи новых (INDEX_NEW) индексов в файл.
+ * ВНИМАНИЕ: После вызова, обязательно вызвать writeHeader, поскольку сама функция хедер файла не обновляет!
  * Возвращает false при неудаче. */
 bool writeNewIndexes(zgdbFile* file, uint64_t count);
 

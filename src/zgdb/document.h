@@ -2,7 +2,6 @@
 #define _DOCUMENT_H_
 
 #define DOCUMENT_BUF_SIZE 500000000 // при перемещении большие документы будут перемещаться кусками по 500Мб
-#define DOCUMENT_START_MARK 0xFF
 
 #include "format_public.h"
 #include "document_public.h"
@@ -14,7 +13,6 @@ struct __attribute__((packed)) documentId {
 
 /* Структура для заголовка документа. */
 typedef struct __attribute__((packed)) documentHeader {
-    uint8_t mark; // должна быть записана метка, означающая начало блока
     uint64_t size : 40; // (5 байт) размер документа в байтах
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
     uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу

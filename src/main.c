@@ -17,7 +17,6 @@ int main(int argc, char** argv) {
 
     documentSchema* schema1 = createSchema(2); // size 64
     if (schema1) {
-        addStringToSchema(schema1, "testString", "I AM STRING");
         addIntegerToSchema(schema1, "first1", 111);
         addIntegerToSchema(schema1, "first2", 222);
     }
@@ -60,42 +59,12 @@ int main(int argc, char** argv) {
     printf("i: %d\n", writeDocument(file, schema2)); // 8
     printf("i: %d\n", writeDocument(file, schema2)); // 9
 
-    //*
-    updateStringValue(file, "testString", "I AM STRI", 0);
-    //printf("removed? %d\n", removeDocument(file, 2));
 
-    /*
-    writeDocument(file, schema2); // 10
-    //*
-
-    writeDocument(file, schema1); // 0
-    writeDocument(file, schema2); // 1
-    writeDocument(file, schema3); // 2
-    writeDocument(file, schema4); // 3
-    writeDocument(file, schema2); // 4
-    writeDocument(file, schema2); // 5
-    writeDocument(file, schema2); // 6
-    writeDocument(file, schema2); // 7
-    writeDocument(file, schema2); // 8
-    writeDocument(file, schema2); // 9
-
-    writeDocument(file, schema1); // 0
-    writeDocument(file, schema2); // 1
-    writeDocument(file, schema3); // 2
-    writeDocument(file, schema4); // 3
-    writeDocument(file, schema2); // 4
-    writeDocument(file, schema2); // 5
-    writeDocument(file, schema2); // 6
-    writeDocument(file, schema2); // 7
-    writeDocument(file, schema2); // 8
-    writeDocument(file, schema2); // 9
-    //*/
-
-    /*
-    updateIntegerValue(file, "fou2", 808, 2);
-    updateBooleanValue(file, "isFirst", false, 2);
-    updateDoubleValue(file, "testDouble", -2.5, 2);
-    updateDocumentValue(file, "testDoc", 2, 2);
+    printf("updated? %d\n", updateIntegerValue(file, "fou2", 808, 2));
+    printf("updated? %d\n", updateBooleanValue(file, "isFirst", false, 2));
+    printf("updated? %d\n", updateDoubleValue(file, "testDouble", -2.5, 2));
+    printf("updated? %d\n", updateStringValue(file, "testString", "I AM STRINGG", 2));
+    //printf("updated? %d\n", updateDocumentValue(file, "testDoc", 1, 2));
 
     element el1 = readElement(file, "fou2", 2);
     element el2 = readElement(file, "isFirst", 2);

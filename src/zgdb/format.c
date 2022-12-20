@@ -4,8 +4,12 @@
 #include "document.h"
 
 bool writeHeader(zgdbFile* file) {
+    bool result;
+    int64_t pos = ftello64(file->f);
     rewind(file->f);
-    return fwrite(&file->header, sizeof(zgdbHeader), 1, file->f);
+    result = fwrite(&file->header, sizeof(zgdbHeader), 1, file->f);
+    fseeko64(file->f, pos, SEEK_SET);
+    return result;
 }
 
 bool writeNewIndexes(zgdbFile* file, uint64_t count) {
@@ -51,35 +55,23 @@ bool loadList(zgdbFile* file) {
     // ВНИМАНИЕ: предполагается, что в момент вызова функции хедер уже загружен, и fseek делать не надо
     int64_t pos = sizeof(zgdbHeader);
     for (uint64_t i = 0; i < file->header.indexCount; i++) {
+        // Считываем индекс:
         pos += sizeof(zgdbIndex);
         zgdbIndex index;
-        if (fread(&index, sizeof(zgdbIndex), 1, file->f)) {
-            if (index.flag != INDEX_ALIVE) {
-                documentHeader header = { 0 };
-                if (index.flag == INDEX_DEAD) {
-                    fseeko64(file->f, index.offset, SEEK_SET);
-                    if (!fread(&header.mark, sizeof(uint8_t), 1, file->f)) {
-                        return false;
-                    }
-                    // Определяем по метке, сколько байт надо считать в size (и нужно ли вообще):
-                    if (header.mark) {
-                        if (header.mark == DOCUMENT_START_MARK) {
-                            header.mark = 5;
-                        }
-                        uint64_t tmp = 0;
-                        if (!fread(&tmp, sizeof(uint8_t), header.mark, file->f)) {
-                            return false;
-                        }
-                        header.size = tmp;
-                    } else {
-                        header.size = 1;
-                    }
-                    fseeko64(file->f, pos, SEEK_SET);
-                }
-                insertNode(&file->list, createNode(header.size, i)); // TODO: обернуть в if?
-            }
-        } else {
+        if (!fread(&index, sizeof(zgdbIndex), 1, file->f)) {
             return false;
+        }
+        // Заполняем список:
+        if (index.flag == INDEX_NEW) {
+            insertNode(&file->list, createNode(0, i));
+        } else if (index.flag == INDEX_DEAD) {
+            documentHeader header;
+            fseeko64(file->f, index.offset, SEEK_SET);
+            if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+                return false;
+            }
+            insertNode(&file->list, createNode(header.size, i));
+            fseeko64(file->f, pos, SEEK_SET); // не забываем вернуться к индексам
         }
     }
     return true;
@@ -102,7 +94,8 @@ zgdbFile* createFile(const char* filename) {
     zgdbFile* file = malloc(sizeof(zgdbFile));
     if (file) {
         file->f = fopen(filename, "w+b");
-        file->header = (zgdbHeader) { ZGDB_FILETYPE, 0, 0 };
+        file->header = (zgdbHeader) { ZGDB_FILETYPE,
+                                      sizeof(zgdbHeader) + sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY, 0, 0 };
         file->list = (sortedList) { NULL, NULL };
         // ВНИМАНИЕ: заголовок записывается после индексов, поскольку writeNewIndexes изменяет indexCount в заголовке.
         if (file->f && writeNewIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY) && writeHeader(file)) {

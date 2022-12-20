@@ -82,3 +82,29 @@ listNode* popBack(sortedList* list) { // TODO: может надо возвра�
     }
     return NULL;
 }
+
+bool removeNodeByIndexNumber(sortedList* list, uint64_t indexNumber) {
+    listNode* curr = list->front;
+    while (curr) {
+        listNode* prev = curr->prev;
+        listNode* next = curr->next;
+        if (curr->indexNumber == indexNumber) {
+            if (prev) {
+                prev->next = next;
+            }
+            if (next) {
+                next->prev = prev;
+            }
+            if (curr == list->front) {
+                list->front = next;
+            }
+            if (curr == list->back) {
+                list->back = prev;
+            }
+            free(curr);
+            return true;
+        }
+        curr = next;
+    }
+    return false;
+}
