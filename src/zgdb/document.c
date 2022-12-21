@@ -565,7 +565,7 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
                 newPos = index.offset = gapIndex.offset;
                 newHeaderSize = file->list.front->size;
                 listNode* node = popFront(&file->list);
-                node->size = 0;
+                node->size = header.size;
                 insertNode(&file->list, node);
             } else {
                 // На предыдущем месте образуется дырка, следовательно, нужны индексы:
@@ -577,19 +577,19 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
                 if (index.flag != INDEX_ALIVE) {
                     return false;
                 }
-                // Считываем индекс дырки и обновляем в нём смещение и флаг:
-                zgdbIndex gapIndex = getIndex(file, file->list.back->indexNumber);
-                if (gapIndex.flag != INDEX_NEW ||
-                    !updateIndex(file, file->list.back->indexNumber, wrap_uint8_t(INDEX_DEAD),
-                                 wrap_int64_t(index.offset))) {
-                    return false;
-                }
-                gapHeader.indexNumber = file->list.back->indexNumber; // записываем в хедер для будущей дырки номер индекса текущей
-                listNode* node = popBack(&file->list);
-                node->size = header.size;
-                insertNode(&file->list, node);
-                // Проверяем, переместился документ или нет:
+                // Если документ не переместился в конец, нужно его туда переместить:
                 if (index.offset + header.size != file->header.fileSize) {
+                    // Считываем INDEX_NEW индекс, делаем его INDEX_DEAD и записываем в него текущее смещение документа:
+                    zgdbIndex gapIndex = getIndex(file, file->list.back->indexNumber);
+                    if (gapIndex.flag != INDEX_NEW ||
+                        !updateIndex(file, file->list.back->indexNumber, wrap_uint8_t(INDEX_DEAD),
+                                     wrap_int64_t(index.offset))) {
+                        return false;
+                    }
+                    gapHeader.indexNumber = file->list.back->indexNumber; // записываем в хедер для будущей дырки номер индекса текущей
+                    listNode* node = popBack(&file->list);
+                    node->size = header.size;
+                    insertNode(&file->list, node);
                     oldPos = index.offset;
                     newPos = index.offset = file->header.fileSize;
                     file->header.fileSize += (int64_t) header.size + delta;
@@ -597,6 +597,7 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
                     newPos = oldPos; // условие для того, чтобы не перемещать документ
                     file->header.fileSize += delta;
                 }
+                // Обновляем fileSize:
                 if (!writeHeader(file)) {
                     return false;
                 }

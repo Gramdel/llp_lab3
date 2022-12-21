@@ -35,6 +35,7 @@ int main(int argc, char** argv) {
         addIntegerToSchema(schema3, "thi3", 789);
         addBooleanToSchema(schema3, "isFirst", false);
         addBooleanToSchema(schema3, "isFoo", true);
+        addStringToSchema(schema3, "testString", "BLA");
     }
 
     documentSchema* schema4 = createSchema(2); // size 168
@@ -50,7 +51,7 @@ int main(int argc, char** argv) {
 
     printf("i: %d\n", writeDocument(file, schema1)); // 0
     printf("i: %d\n", writeDocument(file, schema3)); // 1
-    printf("i: %d\n", writeDocument(file, schema4)); // 2
+    printf("i: %d\n", writeDocument(file, schema3)); // 2
     printf("i: %d\n", writeDocument(file, schema2)); // 3
     printf("i: %d\n", writeDocument(file, schema2)); // 4
     printf("i: %d\n", writeDocument(file, schema2)); // 5
@@ -59,12 +60,16 @@ int main(int argc, char** argv) {
     printf("i: %d\n", writeDocument(file, schema2)); // 8
     printf("i: %d\n", writeDocument(file, schema2)); // 9
 
+    printf("removed? %d\n", removeDocument(file, 1));
+    //printf("i: %d\n", writeDocument(file, schema3)); // 1
 
-    printf("updated? %d\n", updateIntegerValue(file, "fou2", 808, 2));
-    printf("updated? %d\n", updateBooleanValue(file, "isFirst", false, 2));
-    printf("updated? %d\n", updateDoubleValue(file, "testDouble", -2.5, 2));
+
+    //printf("updated? %d\n", updateIntegerValue(file, "fou2", 808, 2));
+    //printf("updated? %d\n", updateBooleanValue(file, "isFirst", false, 2));
+    //printf("updated? %d\n", updateDoubleValue(file, "testDouble", -2.5, 2));
     printf("updated? %d\n", updateStringValue(file, "testString", "I AM STRINGG", 2));
     //printf("updated? %d\n", updateDocumentValue(file, "testDoc", 1, 2));
+    printf("i: %d\n", writeDocument(file, schema4)); // 9
 
     element el1 = readElement(file, "fou2", 2);
     element el2 = readElement(file, "isFirst", 2);
