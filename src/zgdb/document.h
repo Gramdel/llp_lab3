@@ -1,9 +1,9 @@
 #ifndef _DOCUMENT_H_
 #define _DOCUMENT_H_
 
-#define DOCUMENT_BUF_SIZE 500000000 // при перемещении большие документы будут перемещаться кусками по 500Мб
+#include <stdint.h>
 
-#include "format_public.h"
+#include "format.h"
 #include "document_public.h"
 
 struct __attribute__((packed)) documentId {
@@ -19,28 +19,16 @@ typedef struct __attribute__((packed)) documentHeader {
     documentId id; // id, привязанный к документу
 } documentHeader;
 
-struct str {
-    uint32_t size; // размер строки с учётом терминатора
-    char* data;
-};
+/* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
+ * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
+ * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
+ * Возвращает false при неудаче. */
+bool moveFirstDocuments(zgdbFile* file);
 
-struct element {
-    uint8_t type; // тип элемента
-    char key[13]; // ключ элемента
-    union {
-        int32_t integerValue;
-        double doubleValue;
-        uint8_t booleanValue;
-        str stringValue; // строка
-        uint64_t documentValue : 40; // (5 байт) номер индекса, прикрепленного ко вложенному документу
-    };
-};
-
-/* Структура для схемы данных. */
-struct documentSchema{
-    element* elements;
-    uint64_t elementCount;
-    uint64_t capacity;
-};
+/* Функция для рекурсивного удаления вложенных документов.
+ * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
+ * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
+ * Возвращает статус индекса, привязанного к удаляемому документу, или INDEX_NOT_EXIST (при неудаче). */
+indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber);
 
 #endif

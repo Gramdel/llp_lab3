@@ -3,10 +3,11 @@
 
 #define ZGDB_FILETYPE 0x4244475A
 #define ZGDB_DEFAULT_INDEX_CAPACITY 10
+#define ZGDB_BUF_SIZE 500000000 // при перемещении большие документы будут перемещаться кусками по 500Мб
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "format_public.h"
 #include "list.h"
@@ -56,5 +57,10 @@ zgdbIndex getIndex(zgdbFile* file, uint64_t i);
 /* Функция, меняющая флаг и (или) offset в индексе по его порядковому номеру.
  * Возвращает false при неудаче. */
 bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offset);
+
+/* Функция, перемещающая данные с одного место в другое с использованием буфера. При этом oldPos и newPos обновляются.
+ * Максимальный размер буфера - ZGDB_BUF_SIZE.
+ * Возвращает false при неудаче. */
+bool moveData(zgdbFile* file, int64_t* oldPos, int64_t* newPos, uint64_t size);
 
 #endif

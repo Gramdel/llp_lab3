@@ -115,3 +115,35 @@ void closeFile(zgdbFile* file) {
         free(file);
     }
 }
+
+bool moveData(zgdbFile* file, int64_t* oldPos, int64_t* newPos, uint64_t size) {
+    while (size) {
+        // Определяем размер буфера и аллоцируем его:
+        int64_t bufSize;
+        if (size > ZGDB_BUF_SIZE) {
+            bufSize = ZGDB_BUF_SIZE;
+        } else {
+            bufSize = (int64_t) size;
+        }
+        size -= bufSize;
+        uint8_t* buf = malloc(bufSize);
+
+        // Перемещаемся на прошлый адрес и заполняем буфер:
+        fseeko64(file->f, *oldPos, SEEK_SET);
+        if (!fread(buf, bufSize, 1, file->f)) {
+            free(buf);
+            return false;
+        }
+        *oldPos += bufSize;
+
+        // Перемещаемся на новый адрес и пишем из буфера:
+        fseeko64(file->f, *newPos, SEEK_SET);
+        if (!fwrite(buf, bufSize, 1, file->f)) {
+            free(buf);
+            return false;
+        }
+        *newPos += bufSize;
+        free(buf);
+    }
+    return true;
+}

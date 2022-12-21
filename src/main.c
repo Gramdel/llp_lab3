@@ -1,8 +1,8 @@
 ﻿#include <stdio.h>
 #include <malloc.h>
-#include "zgdb/document.h"
-#include "zgdb/format.h"
-#include "zgdb/list.h"
+#include "zgdb/document_public.h"
+//#include "zgdb/element_public.h" TODO: почему-то есть проблемы
+#include "zgdb/element.h"
 
 int main(int argc, char** argv) {
     zgdbFile* file = loadFile("test");
@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
             exit(-1);
         }
     }
-    printf("%08X\n", file->header.fileType);
+    //printf("%08X\n", file->header.fileType);
 
     documentSchema* schema1 = createSchema(2); // size 64
     if (schema1) {
