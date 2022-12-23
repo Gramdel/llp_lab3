@@ -5,10 +5,21 @@
 
 #include "format.h"
 #include "document_public.h"
+#include "element_public.h"
 
 struct __attribute__((packed)) documentId {
     uint32_t timestamp; // время создания документа в секундах с эпохи UNIX
     int64_t offset; // смещение документа относительно начала файла на момент создания документа
+};
+
+struct documentRef {
+    uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
+};
+
+struct documentSchema{
+    element* elements;
+    uint64_t elementCount;
+    uint64_t capacity;
 };
 
 /* Структура для заголовка документа. */

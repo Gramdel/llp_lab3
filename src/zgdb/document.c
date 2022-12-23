@@ -1,9 +1,8 @@
 #include <malloc.h>
 #include <time.h>
+#include <string.h>
 
-#include "format.h"
 #include "document.h"
-#include "schema.h"
 #include "element.h"
 
 bool moveFirstDocuments(zgdbFile* file) {
@@ -112,14 +111,17 @@ uint64_t calcDocumentSize(element* elements, uint64_t elementCount) {
     return size;
 }
 
-uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
+documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
+    if (!schema) {
+        return false;
+    }
     documentHeader header;
     header.size = calcDocumentSize(schema->elements, schema->elementCount);
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
 
     // Сразу выделяем индексы, если список пустой:
     if (!file->list.front && !moveFirstDocuments(file)) {
-        return DOCUMENT_NOT_EXIST;
+        return NULL;
     }
     // Если есть подходящая дырка, то пишем документ туда:
     uint64_t newSize = 0;
@@ -129,7 +131,7 @@ uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
         zgdbIndex index = getIndex(file, file->list.front->indexNumber);
         if (index.flag != INDEX_DEAD ||
             !updateIndex(file, file->list.front->indexNumber, wrap_uint8_t(INDEX_ALIVE), not_present_int64_t())) {
-            return DOCUMENT_NOT_EXIST;
+            return NULL;
         }
         // Заполняем заголовок документа:
         header.indexNumber = file->list.front->indexNumber;
@@ -143,7 +145,7 @@ uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
         if (file->list.back->size != 0 && !moveFirstDocuments(file) ||
             !updateIndex(file, file->list.back->indexNumber, wrap_uint8_t(INDEX_ALIVE),
                          wrap_int64_t(file->header.fileSize))) {
-            return DOCUMENT_NOT_EXIST;
+            return NULL;
         }
         // Заполняем заголовок документа:
         header.indexNumber = file->list.back->indexNumber;
@@ -152,7 +154,7 @@ uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
         // Обновляем размер файла
         file->header.fileSize += (int64_t) header.size;
         if (!writeHeader(file)) {
-            return DOCUMENT_NOT_EXIST;
+            return NULL;
         }
     }
 
@@ -170,7 +172,14 @@ uint64_t writeDocument(zgdbFile* file, documentSchema* schema) {
     // Перемещаемся к началу и записываем заголовок:
     fseeko64(file->f, header.id.offset, SEEK_SET);
     bytesLeft -= fwrite(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
-    return bytesLeft ? DOCUMENT_NOT_EXIST : header.indexNumber;
+    documentRef* ref = NULL;
+    if (!bytesLeft) {
+        ref = malloc(sizeof(documentRef));
+        if (ref) {
+            ref->indexNumber = header.indexNumber;
+        }
+    }
+    return ref;
 }
 
 indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber) {
@@ -208,6 +217,82 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
     return index.flag;
 }
 
-bool removeDocument(zgdbFile* file, uint64_t i) {
-    return removeEmbeddedDocument(file, i, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
+bool removeDocument(zgdbFile* file, documentRef* ref) {
+    return !ref ? false : removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
+}
+
+void destroyDocumentRef(documentRef* ref) {
+    if (ref) {
+        free(ref);
+    }
+}
+
+documentSchema* createSchema(uint64_t capacity) {
+    documentSchema* schema = malloc(sizeof(documentSchema));
+    if (schema) {
+        schema->elements = malloc(sizeof(element) * capacity);
+        if (schema->elements) {
+            schema->elementCount = 0;
+            schema->capacity = capacity;
+        }
+    }
+    return schema;
+}
+
+void destroySchema(documentSchema* schema) {
+    if (schema) {
+        if (schema->elements) {
+            free(schema->elements);
+        }
+        free(schema);
+    }
+}
+
+bool addElementToSchema(documentSchema* schema, element el, const char* key) {
+    if (!schema || !key || strlen(key) > 12) {
+        return false;
+    }
+    if (schema->elementCount == schema->capacity) {
+        element* newElements = malloc(sizeof(element) * (schema->capacity + 1));
+        if (!newElements) {
+            return false;
+        }
+        memcpy(newElements, schema->elements, sizeof(element) * (schema->capacity++));
+        free(schema->elements);
+        schema->elements = newElements;
+    }
+    memset(el.key, 0, 13);
+    strncpy(el.key, key, 13);
+    schema->elements[schema->elementCount++] = el;
+    return true;
+}
+
+bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
+}
+
+bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
+}
+
+bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
+    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
+}
+
+bool addStringToSchema(documentSchema* schema, char* key, char* value) {
+    return !value ? false : addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = (str) {
+            strlen(value) + 1, value }}, key);
+}
+
+bool addEmbeddedDocumentToSchema(zgdbFile* file, documentSchema* schema, char* key, documentSchema* embeddedSchema) {
+    if (schema != embeddedSchema) {
+        documentRef* ref = writeDocument(file, embeddedSchema);
+        if (ref) {
+            uint64_t value = ref->indexNumber;
+            destroyDocumentRef(ref);
+            return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value },
+                                      key);
+        }
+    }
+    return false;
 }
