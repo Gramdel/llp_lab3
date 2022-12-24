@@ -49,6 +49,14 @@ bool moveFirstDocuments(zgdbFile* file) {
                 listNode* node = popFront(&file->list);
                 node->size = 0;
                 insertNode(&file->list, node);
+                // Если дырка больше, чем надо, записываем TYPE_NOT_EXIST в том месте, где будет заканчиваться документ:
+                if (newHeaderSize > header.size) {
+                    uint8_t startOfUnusedSpaceMark = TYPE_NOT_EXIST;
+                    fseeko64(file->f, newPos + (int64_t) header.size, SEEK_SET);
+                    if (!fwrite(&startOfUnusedSpaceMark, sizeof(uint8_t), 1, file->f)) {
+                        return false;
+                    }
+                }
             } else {
                 newPos = file->header.fileSize;
                 // Обновляем размер файла:
@@ -136,7 +144,13 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
         // Заполняем заголовок документа:
         header.indexNumber = file->list.front->indexNumber;
         header.id.offset = index.offset;
+        // Если дырка больше, чем надо, записываем TYPE_NOT_EXIST в том месте, где будет заканчиваться документ:
         if (diff) {
+            uint8_t startOfUnusedSpaceMark = TYPE_NOT_EXIST;
+            fseeko64(file->f, index.offset + (int64_t) header.size, SEEK_SET);
+            if (!fwrite(&startOfUnusedSpaceMark, sizeof(uint8_t), 1, file->f)) {
+                return NULL;
+            }
             newSize = file->list.front->size;
         }
         free(popFront(&file->list));
@@ -218,12 +232,17 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
 }
 
 bool removeDocument(zgdbFile* file, documentRef* ref) {
-    return !ref ? false : removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
+    bool result = false;
+    if (ref) {
+        result = removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
+        ref->indexNumber = DOCUMENT_NOT_EXIST;
+    }
+    return result;
 }
 
 void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
     if (i == DOCUMENT_NOT_EXIST) {
-        printf("%*sDocument does not exist!\n", nestingLevel * 2, "");
+        printf("%*sDocument does not exist!\n\n", nestingLevel * 2, "");
     } else {
         zgdbIndex index = getIndex(file, i);
         if (index.flag == INDEX_ALIVE) {
@@ -241,6 +260,9 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
                     }
                     bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
                     switch (el.type) {
+                        case TYPE_NOT_EXIST:
+                            bytesRead = header.size;
+                            break;
                         case TYPE_INT:
                             if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
                                 goto exit;
@@ -296,10 +318,10 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
 void printDocument(zgdbFile* file, documentRef* ref) {
     if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
         printEmbeddedDocument(file, ref->indexNumber, 0);
-        printf("\n");
     } else {
         printf("Document does not exist!\n");
     }
+    printf("\n");
 }
 
 void destroyDocumentRef(documentRef* ref) {

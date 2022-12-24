@@ -18,6 +18,7 @@ int main(int argc, char** argv) {
         addBooleanToSchema(root1Schema, "isFoo", true);
         addStringToSchema(root1Schema, "testString", "BLA");
     }
+    documentRef* root1 = writeDocument(file, root1Schema);
 
     documentSchema* grandChildSchema = createSchema(3); // size
     if (grandChildSchema) {
@@ -43,12 +44,23 @@ int main(int argc, char** argv) {
         addStringToSchema(root2Schema, "rootString", "I AM ROOT");
         addEmbeddedDocumentToSchema(file, root2Schema, "child", childSchema);
     }
-
-    documentRef* root1 = writeDocument(file, root1Schema);
     documentRef* root2 = writeDocument(file, root2Schema);
 
     printDocument(file, root1);
     printDocument(file, root2);
+
+    documentRef* root3 = writeDocument(file, grandChildSchema);
+    writeDocument(file, root1Schema);
+    writeDocument(file, root1Schema);
+    writeDocument(file, root1Schema);
+    writeDocument(file, root1Schema);
+    writeDocument(file, root1Schema);
+
+    removeDocument(file, root3);
+    printDocument(file, root3);
+
+    printDocument(file, writeDocument(file, childSchema));
+    printDocument(file, root1);
 
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);

@@ -51,7 +51,7 @@ void insertNode(sortedList* list, listNode* node) {
     }
 }
 
-listNode* popFront(sortedList* list) { // TODO: может надо возвращать void? Номер индекса и размер мы достанем из списка и так.
+listNode* popFront(sortedList* list) {
     if (list) {
         if (list->front) {
             listNode* front = list->front;
@@ -67,7 +67,7 @@ listNode* popFront(sortedList* list) { // TODO: может надо возвра
     return NULL;
 }
 
-listNode* popBack(sortedList* list) { // TODO: может надо возвращать void? Номер индекса и размер мы достанем из списка и так.
+listNode* popBack(sortedList* list) {
     if (list) {
         if (list->back) {
             listNode* back = list->back;

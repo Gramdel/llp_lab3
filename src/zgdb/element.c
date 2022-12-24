@@ -6,6 +6,8 @@
 #include "element.h"
 
 uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
+    int64_t pos = ftello64(file->f); // переменная для восстановления позиции после записи вложенных документов
+    documentRef* ref; // переменная для ссылки на вложенный документ
     uint64_t bytesWritten = 0;
     bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
     bytesWritten += fwrite(el->key, sizeof(char), 13, file->f) * sizeof(char);
@@ -24,17 +26,16 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
             bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            // Документ не может быть сам себе родителем и ребёнком, поэтому:
-            if (el->documentValue == parentIndexNumber) {
+            ref = writeDocument(file, el->documentValue);
+            if (!ref) {
                 return 0;
             }
 
-            uint64_t tmp = el->documentValue; // для битового поля
+            uint64_t tmp = ref->indexNumber; // для битового поля
             bytesWritten += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
 
             // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
-            int64_t pos = ftello64(file->f);
-            zgdbIndex index = getIndex(file, el->documentValue);
+            zgdbIndex index = getIndex(file, tmp);
             if (index.flag != INDEX_ALIVE) {
                 return 0;
             } else {
@@ -116,6 +117,9 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
                 } else {
                     bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
                     switch (el.type) {
+                        case TYPE_NOT_EXIST:
+                            bytesRead = header.size;
+                            break;
                         case TYPE_INT:
                             if (fseeko64(file->f, sizeof(int32_t), SEEK_CUR) != 0) {
                                 goto exit;
@@ -167,7 +171,7 @@ void destroyElement(element el) {
 void printElementOfEmbeddedDocument(zgdbFile* file, element el, uint64_t nestingLevel) {
     switch (el.type) {
         case TYPE_NOT_EXIST:
-            printf("%*sElement does not exist!\n", nestingLevel * 2, "");
+            printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2, "");
             break;
         case TYPE_INT:
             printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el.key, el.integerValue);
@@ -278,6 +282,14 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
                 listNode* node = popFront(&file->list);
                 node->size = header.size;
                 insertNode(&file->list, node);
+                // Если дырка больше, чем надо, записываем TYPE_NOT_EXIST в том месте, где будет заканчиваться документ:
+                if (diff) {
+                    uint8_t startOfUnusedSpaceMark = TYPE_NOT_EXIST;
+                    fseeko64(file->f, newPos + (int64_t) header.size, SEEK_SET);
+                    if (!fwrite(&startOfUnusedSpaceMark, sizeof(uint8_t), 1, file->f)) {
+                        return false;
+                    }
+                }
             } else {
                 // На предыдущем месте образуется дырка, следовательно, нужны индексы:
                 if ((!file->list.back || file->list.back->size) && !moveFirstDocuments(file)) {
@@ -352,6 +364,7 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
     return true;
 }
 
+// TODO: передавать сюда новую схему
 bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, uint64_t i) {
     // Спускаемся к нужному элементу по ключу:
     if (navigateToElement(file, neededKey, i) == TYPE_EMBEDDED_DOCUMENT) {
