@@ -29,6 +29,9 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema);
  * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, documentRef* ref);
 
+/* Функция для вывода документа. */
+void printDocument(zgdbFile* file, documentRef* ref);
+
 /* Функция для уничтожения ссылки на документ. С документом в файле ничего не делает! */
 void destroyDocumentRef(documentRef* ref);
 

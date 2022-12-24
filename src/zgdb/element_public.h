@@ -33,7 +33,7 @@ element readElement(zgdbFile* file, char* neededKey, uint64_t i);
 void destroyElement(element el);
 
 /* Функция для вывода элемента на экран. */
-void printElement(element el);
+void printElement(zgdbFile* file, element el);
 
 /* Функция для получения типа элемента. */
 elementType getTypeOfElement(element el);

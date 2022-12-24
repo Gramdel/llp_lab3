@@ -16,7 +16,7 @@ struct documentRef {
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
 };
 
-struct documentSchema{
+struct documentSchema {
     element* elements;
     uint64_t elementCount;
     uint64_t capacity;
@@ -37,9 +37,10 @@ typedef struct __attribute__((packed)) documentHeader {
 bool moveFirstDocuments(zgdbFile* file);
 
 /* Функция для рекурсивного удаления вложенных документов.
- * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
- * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
  * Возвращает статус индекса, привязанного к удаляемому документу, или INDEX_NOT_EXIST (при неудаче). */
 indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber);
+
+/* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
+void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
 
 #endif

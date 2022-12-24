@@ -221,6 +221,87 @@ bool removeDocument(zgdbFile* file, documentRef* ref) {
     return !ref ? false : removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
 }
 
+void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
+    if (i == DOCUMENT_NOT_EXIST) {
+        printf("%*sDocument does not exist!\n", nestingLevel * 2, "");
+    } else {
+        zgdbIndex index = getIndex(file, i);
+        if (index.flag == INDEX_ALIVE) {
+            fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
+            documentHeader header;
+            if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+                printf("%*s### ID: %08X%016X SIZE: %ld ###\n", nestingLevel * 2, "", header.id.timestamp, header.id.offset, header.size);
+                uint64_t bytesRead = sizeof(documentHeader);
+                element el;
+                uint64_t tmp = 0; // для битового поля (documentValue)
+                while (bytesRead < header.size) {
+                    if (!fread(&el.type, sizeof(uint8_t), 1, file->f) ||
+                        fread(&el.key, sizeof(char), 13, file->f) != 13) {
+                        goto exit;
+                    }
+                    bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
+                    switch (el.type) {
+                        case TYPE_INT:
+                            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(int32_t);
+                            break;
+                        case TYPE_DOUBLE:
+                            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(double);
+                            break;
+                        case TYPE_BOOLEAN:
+                            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(uint8_t);
+                            break;
+                        case TYPE_STRING:
+                            if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
+                            if (el.stringValue.data) {
+                                if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) != el.stringValue.size) {
+                                    free(el.stringValue.data);
+                                    goto exit;
+                                }
+                            } else {
+                                goto exit;
+                            }
+                            bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
+                            break;
+                        case TYPE_EMBEDDED_DOCUMENT:
+                            if (!fread(&tmp, 5, 1, file->f)) {
+                                goto exit;
+                            }
+                            el.documentValue = tmp;
+                            bytesRead += 5;
+                            break;
+                    }
+                    printElementOfEmbeddedDocument(file, el, nestingLevel);
+                    destroyElement(el);
+                }
+                return;
+            }
+        }
+        exit:
+        printf("%*sAn error occurred!\n", nestingLevel * 2, "");
+    }
+}
+
+void printDocument(zgdbFile* file, documentRef* ref) {
+    if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
+        printEmbeddedDocument(file, ref->indexNumber, 0);
+        printf("\n");
+    } else {
+        printf("Document does not exist!\n");
+    }
+}
+
 void destroyDocumentRef(documentRef* ref) {
     if (ref) {
         free(ref);

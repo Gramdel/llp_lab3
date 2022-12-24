@@ -29,4 +29,7 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber);
  * Возвращает тип найденного элемента или TYPE_NOT_EXIST (при ошибке). */
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i);
 
+/* Функция для вывода элементов вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
+void printElementOfEmbeddedDocument(zgdbFile* file, element el, uint64_t nestingLevel);
+
 #endif

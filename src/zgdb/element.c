@@ -158,31 +158,39 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
 
 void destroyElement(element el) {
     if (el.type == TYPE_STRING) {
-        free(el.stringValue.data);
+        if (el.stringValue.data) {
+            free(el.stringValue.data);
+        }
     }
 }
 
-void printElement(element el) {
+void printElementOfEmbeddedDocument(zgdbFile* file, element el, uint64_t nestingLevel) {
     switch (el.type) {
         case TYPE_NOT_EXIST:
-            printf("Element does not exist!\n");
+            printf("%*sElement does not exist!\n", nestingLevel * 2, "");
             break;
         case TYPE_INT:
-            printf("key: \"%s\", integerValue: %d\n", el.key, el.integerValue);
+            printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el.key, el.integerValue);
             break;
         case TYPE_DOUBLE:
-            printf("key: \"%s\", doubleValue: %f\n", el.key, el.doubleValue);
+            printf("%*skey: \"%s\", doubleValue: %f\n", nestingLevel * 2, "", el.key, el.doubleValue);
             break;
         case TYPE_BOOLEAN:
-            printf("key: \"%s\", booleanValue: %s\n", el.key, el.booleanValue ? "true" : "false");
+            printf("%*skey: \"%s\", booleanValue: %s\n", nestingLevel * 2, "", el.key,
+                   el.booleanValue ? "true" : "false");
             break;
         case TYPE_STRING:
-            printf("key: \"%s\", stringValue: \"%s\"\n", el.key, el.stringValue.data);
+            printf("%*skey: \"%s\", stringValue: \"%s\"\n", nestingLevel * 2, "", el.key, el.stringValue.data);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            printf("key: \"%s\", documentValue: %ld\n", el.key, el.documentValue);
+            printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el.key);
+            printEmbeddedDocument(file, el.documentValue, nestingLevel + 1);
             break;
     }
+}
+
+void printElement(zgdbFile* file, element el) {
+    printElementOfEmbeddedDocument(file, el, 0);
 }
 
 elementType getTypeOfElement(element el) {

@@ -46,11 +46,12 @@ int main(int argc, char** argv) {
 
     documentRef* root1 = writeDocument(file, root1Schema);
     documentRef* root2 = writeDocument(file, root2Schema);
+
+    printDocument(file, root1);
+    printDocument(file, root2);
+
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);
-
-    printf("i: %d\n", root1); // 1
-    printf("i: %d\n", root2); // 2
 
     //element el = readElement(file, "grandChildSchema", readElement(file, "childSchema", root2Schema));
 
