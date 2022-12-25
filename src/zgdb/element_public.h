@@ -50,8 +50,8 @@ uint8_t getBooleanValue(element el);
 /* Функция для получения значения из элемента типа TYPE_STRING. */
 str getStringValue(element el);
 
-/* Функция для получения значения из элемента типа TYPE_EMBEDDED_DOCUMENT. */
-uint64_t getDocumentValue(element el);
+/* Функция для получения ссылки на вложенный документ из элемента типа TYPE_EMBEDDED_DOCUMENT. */
+documentRef* getDocumentValue(element el);
 
 /* Функция для обновления значения у элемента типа TYPE_INT.
  * Возвращает false при неудаче. */

@@ -6,7 +6,6 @@
 #include "element.h"
 
 uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
-    int64_t pos = ftello64(file->f); // переменная для восстановления позиции после записи вложенных документов
     documentRef* ref; // переменная для ссылки на вложенный документ
     uint64_t bytesWritten = 0;
     bytesWritten += fwrite(&el->type, sizeof(uint8_t), 1, file->f);
@@ -26,13 +25,14 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
             bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            ref = writeDocument(file, el->documentValue);
+            ref = writeDocument(file, el->schemaValue);
             if (!ref) {
                 return 0;
             }
 
             uint64_t tmp = ref->indexNumber; // для битового поля
             bytesWritten += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
+            int64_t pos = ftello64(file->f); // сохраняем позицию до записи заголовков вложенного документа
 
             // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
             zgdbIndex index = getIndex(file, tmp);
@@ -51,7 +51,7 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
                     return 0;
                 }
             }
-            fseeko64(file->f, pos, SEEK_SET);
+            fseeko64(file->f, pos, SEEK_SET); // восстанавливаем позицию
             break;
     }
     return bytesWritten;
@@ -91,10 +91,12 @@ element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
             el.type = TYPE_NOT_EXIST;
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            if (!fread(&tmp, 5, 1, file->f)) {
+            el.documentValue = malloc(sizeof(documentRef));
+            if (!fread(&tmp, 5, 1, file->f) || !el.documentValue) {
                 el.type = TYPE_NOT_EXIST;
+            } else {
+                el.documentValue->indexNumber = tmp;
             }
-            el.documentValue = tmp;
             break;
     }
     return el;
@@ -188,7 +190,7 @@ void printElementOfEmbeddedDocument(zgdbFile* file, element el, uint64_t nesting
             break;
         case TYPE_EMBEDDED_DOCUMENT:
             printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el.key);
-            printEmbeddedDocument(file, el.documentValue, nestingLevel + 1);
+            printEmbeddedDocument(file, el.documentValue->indexNumber, nestingLevel + 1);
             break;
     }
 }
@@ -218,7 +220,7 @@ str getStringValue(element el) {
     return el.stringValue;
 }
 
-uint64_t getDocumentValue(element el) {
+documentRef* getDocumentValue(element el) {
     return el.documentValue;
 }
 

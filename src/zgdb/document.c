@@ -123,6 +123,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     if (!schema) {
         return false;
     }
+    int64_t pos = ftello64(file->f); // сохраняем текущую позицию, чтобы вернуться в неё после записи
     documentHeader header;
     header.size = calcDocumentSize(schema->elements, schema->elementCount);
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
@@ -193,6 +194,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
             ref->indexNumber = header.indexNumber;
         }
     }
+    fseeko64(file->f, pos, SEEK_SET);
     return ref;
 }
 
@@ -233,7 +235,7 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
 
 bool removeDocument(zgdbFile* file, documentRef* ref) {
     bool result = false;
-    if (ref) {
+    if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
         result = removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
         ref->indexNumber = DOCUMENT_NOT_EXIST;
     }
@@ -249,7 +251,8 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
             fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
             documentHeader header;
             if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-                printf("%*s### ID: %08X%016X SIZE: %ld ###\n", nestingLevel * 2, "", header.id.timestamp, header.id.offset, header.size);
+                printf("%*s### ID: %08X%016X SIZE: %ld ###\n", nestingLevel * 2, "", header.id.timestamp,
+                       header.id.offset, header.size);
                 uint64_t bytesRead = sizeof(documentHeader);
                 element el;
                 uint64_t tmp = 0; // для битового поля (documentValue)
@@ -287,7 +290,8 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
                             }
                             el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
                             if (el.stringValue.data) {
-                                if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) != el.stringValue.size) {
+                                if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
+                                    el.stringValue.size) {
                                     free(el.stringValue.data);
                                     goto exit;
                                 }
@@ -297,10 +301,11 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
                             bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
                             break;
                         case TYPE_EMBEDDED_DOCUMENT:
-                            if (!fread(&tmp, 5, 1, file->f)) {
+                            el.documentValue = malloc(sizeof(documentRef));
+                            if (!fread(&tmp, 5, 1, file->f) || !el.documentValue) {
                                 goto exit;
                             }
-                            el.documentValue = tmp;
+                            el.documentValue->indexNumber = tmp;
                             bytesRead += 5;
                             break;
                     }
@@ -387,15 +392,10 @@ bool addStringToSchema(documentSchema* schema, char* key, char* value) {
             strlen(value) + 1, value }}, key);
 }
 
-bool addEmbeddedDocumentToSchema(zgdbFile* file, documentSchema* schema, char* key, documentSchema* embeddedSchema) {
-    if (schema != embeddedSchema) {
-        documentRef* ref = writeDocument(file, embeddedSchema);
-        if (ref) {
-            uint64_t value = ref->indexNumber;
-            destroyDocumentRef(ref);
-            return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .documentValue = value },
-                                      key);
-        }
+bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSchema* embeddedSchema) {
+    if (embeddedSchema && schema != embeddedSchema) {
+        return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .schemaValue = embeddedSchema },
+                                  key);
     }
     return false;
 }

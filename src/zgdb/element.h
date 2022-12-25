@@ -16,7 +16,8 @@ struct element {
         double doubleValue;
         uint8_t booleanValue;
         str stringValue; // строка
-        uint64_t documentValue : 40; // (5 байт) номер индекса, прикрепленного ко вложенному документу
+        documentRef* documentValue; // указатель на документ
+        documentSchema* schemaValue; // указатель на схему; служебный тип
     };
 };
 

@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     if (childSchema) {
         addIntegerToSchema(childSchema, "childInt1", 111);
         addIntegerToSchema(childSchema, "childInt2", 222);
-        addEmbeddedDocumentToSchema(file, childSchema, "grandChild", grandChildSchema);
+        addEmbeddedDocumentToSchema(childSchema, "grandChild", grandChildSchema);
     }
 
     documentSchema* root2Schema = createSchema(2); // size
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         addBooleanToSchema(root2Schema, "isFirst", true);
         addDoubleToSchema(root2Schema, "rootDouble", 128.128);
         addStringToSchema(root2Schema, "rootString", "I AM ROOT");
-        addEmbeddedDocumentToSchema(file, root2Schema, "child", childSchema);
+        addEmbeddedDocumentToSchema(root2Schema, "child", childSchema);
     }
     documentRef* root2 = writeDocument(file, root2Schema);
 

@@ -18,14 +18,12 @@ typedef struct documentRef documentRef;
 /* Структура для схемы данных. */
 typedef struct documentSchema documentSchema;
 
-/* Функция для добавления нового документа в файл. Если у документа есть "дети", то спускается в их заголовки и
- * записывает в них информацию об индексе добавляемого документа (родителя).
- * ВНИМАНИЕ: Если к моменту вызова этой функции дети не были записаны в файл, вернёт NULL.
- * ВНИМАНИЕ: Если у ребёнка уже есть родитель, вернёт NULL.
- * Возвращает ссылку на документ. */
+/* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
+ * и записывает в них информацию об индексе добавляемого документа (родителя).
+ * Возвращает ссылку на документ или NULL (при неудаче). */
 documentRef* writeDocument(zgdbFile* file, documentSchema* schema);
 
-/* Функция для удаления документа из файла.
+/* Функция для удаления документа из файла. Вне зависимости от результата, делает ссылку на документ недоступной.
  * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, documentRef* ref);
 
@@ -58,9 +56,7 @@ bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value);
  * Возвращает false при неудаче. */
 bool addStringToSchema(documentSchema* schema, char* key, char* value);
 
-/* Функция для добавления в схему элемента типа TYPE_EMBEDDED_DOCUMENT.
- * ВНИМАНИЕ: Автоматически вызывает writeDocument и записывает в файл новый документ со схемой embeddedSchema.
- * Возвращает false при неудаче. */
-bool addEmbeddedDocumentToSchema(zgdbFile* file, documentSchema* schema, char* key, documentSchema* embeddedSchema);
+/* Функция для добавления в схему элемента типа TYPE_EMBEDDED_DOCUMENT с определённой схемой. */
+bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSchema* embeddedSchema);
 
 #endif
