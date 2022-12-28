@@ -7,10 +7,11 @@
 #include "document_public.h"
 #include "element_public.h"
 
-struct __attribute__((packed)) documentId {
+/* Структура для id, привязанного к документу. */
+typedef struct __attribute__((packed)) documentId {
     uint32_t timestamp; // время создания документа в секундах с эпохи UNIX
     int64_t offset; // смещение документа относительно начала файла на момент создания документа
-};
+} documentId;
 
 struct documentRef {
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
@@ -29,6 +30,9 @@ typedef struct __attribute__((packed)) documentHeader {
     uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу
     documentId id; // id, привязанный к документу
 } documentHeader;
+
+/* Функция для расчёта размера будущего документа по схеме. */
+uint64_t calcDocumentSize(documentSchema* schema);
 
 /* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
  * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер

@@ -8,9 +8,6 @@
 
 #include "format_public.h"
 
-/* Структура для id, привязанного к документу. */
-typedef struct documentId documentId;
-
 /* Структура для "ссылки" на документ.
  * Фактически, обёртка для номера индекса документа в файле.*/
 typedef struct documentRef documentRef;
@@ -29,6 +26,11 @@ bool removeDocument(zgdbFile* file, documentRef* ref);
 
 /* Функция для вывода документа. */
 void printDocument(zgdbFile* file, documentRef* ref);
+
+/* Функция для получения ссылки на документ с определённым ID. Принимает ID в виде строки из 24 символов.
+ * ВНИМАНИЕ: Если ID получен не после вывода, а напрямую (через HEX редактор), то нужно его сначала перевести в Big Endian.
+ * Возвращает NULL при неудаче. */
+documentRef* getDocumentByID(zgdbFile* file, char* idAsString);
 
 /* Функция для уничтожения ссылки на документ. С документом в файле ничего не делает! */
 void destroyDocumentRef(documentRef* ref);

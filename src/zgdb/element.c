@@ -57,49 +57,57 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     return bytesWritten;
 }
 
-element readElement(zgdbFile* file, char* neededKey, uint64_t i) {
-    uint64_t tmp = 0; // для битового поля (documentValue)
-    element el;
-    strcpy(el.key, neededKey);
-    el.type = navigateToElement(file, neededKey, i);
-    switch (el.type) {
-        case TYPE_INT:
-            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
-                el.type = TYPE_NOT_EXIST;
-            }
-            break;
-        case TYPE_DOUBLE:
-            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
-                el.type = TYPE_NOT_EXIST;
-            }
-            break;
-        case TYPE_BOOLEAN:
-            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
-                el.type = TYPE_NOT_EXIST;
-            }
-            break;
-        case TYPE_STRING:
-            if (fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
-                if (el.stringValue.data) {
-                    if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) == el.stringValue.size) {
-                        break;
+element* readElement(zgdbFile* file, char* neededKey, documentRef* ref) {
+    if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
+        uint64_t tmp = 0; // для битового поля (documentValue)
+        element* el = malloc(sizeof(element));
+        if (el) {
+            strcpy(el->key, neededKey);
+            el->type = navigateToElement(file, neededKey, ref->indexNumber);
+            switch (el->type) {
+                case TYPE_NOT_EXIST:
+                    break;
+                case TYPE_INT:
+                    if (fread(&el->integerValue, sizeof(int32_t), 1, file->f)) {
+                        return el;
                     }
-                    free(el.stringValue.data);
-                }
+                    break;
+                case TYPE_DOUBLE:
+                    if (fread(&el->doubleValue, sizeof(double), 1, file->f)) {
+                        return el;
+                    }
+                    break;
+                case TYPE_BOOLEAN:
+                    if (fread(&el->booleanValue, sizeof(uint8_t), 1, file->f)) {
+                        return el;
+                    }
+                    break;
+                case TYPE_STRING:
+                    if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                        el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
+                        if (el->stringValue.data) {
+                            if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) == el->stringValue.size) {
+                                return el;
+                            }
+                            free(el->stringValue.data);
+                        }
+                    }
+                    break;
+                case TYPE_EMBEDDED_DOCUMENT:
+                    el->documentValue = malloc(sizeof(documentRef));
+                    if (el->documentValue) {
+                        if (fread(&tmp, 5, 1, file->f)) {
+                            el->documentValue->indexNumber = tmp;
+                            return el;
+                        }
+                        free(el->documentValue);
+                    }
+                    break;
             }
-            el.type = TYPE_NOT_EXIST;
-            break;
-        case TYPE_EMBEDDED_DOCUMENT:
-            el.documentValue = malloc(sizeof(documentRef));
-            if (!fread(&tmp, 5, 1, file->f) || !el.documentValue) {
-                el.type = TYPE_NOT_EXIST;
-            } else {
-                el.documentValue->indexNumber = tmp;
-            }
-            break;
+            free(el);
+        }
     }
-    return el;
+    return NULL;
 }
 
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
@@ -162,43 +170,55 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
     return TYPE_NOT_EXIST;
 }
 
-void destroyElement(element el) {
-    if (el.type == TYPE_STRING) {
-        if (el.stringValue.data) {
-            free(el.stringValue.data);
+void destroyElement(element* el) {
+    if (el) {
+        if (el->type == TYPE_STRING) {
+            if (el->stringValue.data) {
+                free(el->stringValue.data);
+            }
+        } else if (el->type == TYPE_EMBEDDED_DOCUMENT) {
+            if (el->documentValue) {
+                free(el->documentValue);
+            }
         }
+        free(el);
     }
 }
 
-void printElementOfEmbeddedDocument(zgdbFile* file, element el, uint64_t nestingLevel) {
-    switch (el.type) {
-        case TYPE_NOT_EXIST:
-            printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2, "");
-            break;
-        case TYPE_INT:
-            printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el.key, el.integerValue);
-            break;
-        case TYPE_DOUBLE:
-            printf("%*skey: \"%s\", doubleValue: %f\n", nestingLevel * 2, "", el.key, el.doubleValue);
-            break;
-        case TYPE_BOOLEAN:
-            printf("%*skey: \"%s\", booleanValue: %s\n", nestingLevel * 2, "", el.key,
-                   el.booleanValue ? "true" : "false");
-            break;
-        case TYPE_STRING:
-            printf("%*skey: \"%s\", stringValue: \"%s\"\n", nestingLevel * 2, "", el.key, el.stringValue.data);
-            break;
-        case TYPE_EMBEDDED_DOCUMENT:
-            printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el.key);
-            printEmbeddedDocument(file, el.documentValue->indexNumber, nestingLevel + 1);
-            break;
+void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestingLevel) {
+    if (el) {
+        switch (el->type) {
+            case TYPE_NOT_EXIST:
+                printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2, "");
+                break;
+            case TYPE_INT:
+                printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el->key, el->integerValue);
+                break;
+            case TYPE_DOUBLE:
+                printf("%*skey: \"%s\", doubleValue: %f\n", nestingLevel * 2, "", el->key, el->doubleValue);
+                break;
+            case TYPE_BOOLEAN:
+                printf("%*skey: \"%s\", booleanValue: %s\n", nestingLevel * 2, "", el->key,
+                       el->booleanValue ? "true" : "false");
+                break;
+            case TYPE_STRING:
+                printf("%*skey: \"%s\", stringValue: \"%s\"\n", nestingLevel * 2, "", el->key, el->stringValue.data);
+                break;
+            case TYPE_EMBEDDED_DOCUMENT:
+                printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el->key);
+                printEmbeddedDocument(file, el->documentValue->indexNumber, nestingLevel + 1);
+                break;
+        }
+    } else {
+        printf("%*sElement doesn't exist!\n", nestingLevel * 2, "");
     }
 }
 
-void printElement(zgdbFile* file, element el) {
+void printElement(zgdbFile* file, element* el) {
     printElementOfEmbeddedDocument(file, el, 0);
 }
 
+// TODO: перевести все геттеры на работу с указателями
 elementType getTypeOfElement(element el) {
     return el.type;
 }
@@ -215,30 +235,42 @@ uint8_t getBooleanValue(element el) {
     return el.booleanValue;
 }
 
-// TODO: может тупо возвращать char* ?
-str getStringValue(element el) {
-    return el.stringValue;
+char* getStringValue(element el) {
+    return el.stringValue.data;
 }
 
 documentRef* getDocumentValue(element el) {
     return el.documentValue;
 }
 
-bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, uint64_t i) {
-    return navigateToElement(file, neededKey, i) == TYPE_INT && fwrite(&value, sizeof(int32_t), 1, file->f);
+bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, documentRef* ref) {
+    if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
+        return false;
+    }
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_INT && fwrite(&value, sizeof(int32_t), 1, file->f);
 }
 
-bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, uint64_t i) {
-    return navigateToElement(file, neededKey, i) == TYPE_DOUBLE && fwrite(&value, sizeof(double), 1, file->f);
+bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, documentRef* ref) {
+    if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
+        return false;
+    }
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_DOUBLE && fwrite(&value, sizeof(double), 1, file->f);
 }
 
-bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, uint64_t i) {
-    return navigateToElement(file, neededKey, i) == TYPE_BOOLEAN && fwrite(&value, sizeof(uint8_t), 1, file->f);
+bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, documentRef* ref) {
+    if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
+        return false;
+    }
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_BOOLEAN && fwrite(&value, sizeof(uint8_t), 1, file->f);
 }
 
-bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i) {
+bool updateStringValue(zgdbFile* file, char* neededKey, char* value, documentRef* ref) {
+    // Проверяем ссылку на документ:
+    if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
+        return false;
+    }
     // Получаем индекс документа:
-    zgdbIndex index = getIndex(file, i);
+    zgdbIndex index = getIndex(file, ref->indexNumber);
     if (index.flag != INDEX_ALIVE) {
         return false;
     }
@@ -249,7 +281,7 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
         return false;
     }
     // Спускаемся к нужному элементу по ключу, сохраняем относительное смещение:
-    if (navigateToElement(file, neededKey, i) != TYPE_STRING) {
+    if (navigateToElement(file, neededKey, ref->indexNumber) != TYPE_STRING) {
         return false;
     }
     int64_t offsetOfValue = ftello64(file->f) - index.offset;
@@ -298,7 +330,7 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
                     return false;
                 }
                 // Заново считываем индекс документа, поскольку он мог быть перемещён:
-                index = getIndex(file, i);
+                index = getIndex(file, ref->indexNumber);
                 if (index.flag != INDEX_ALIVE) {
                     return false;
                 }
@@ -367,9 +399,12 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, uint64_t i)
 }
 
 // TODO: передавать сюда новую схему
-bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, uint64_t i) {
+bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, documentRef* ref) {
+    if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
+        return false;
+    }
     // Спускаемся к нужному элементу по ключу:
-    if (navigateToElement(file, neededKey, i) == TYPE_EMBEDDED_DOCUMENT) {
+    if (navigateToElement(file, neededKey, ref->indexNumber) == TYPE_EMBEDDED_DOCUMENT) {
         // Считываем предыдущее значение поля:
         int64_t pos = ftello64(file->f);
         uint64_t oldChildIndexNumber = 0;
@@ -384,7 +419,8 @@ bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, uint64
                 if (fread(&parentIndexNumber, 5, 1, file->f) && parentIndexNumber == DOCUMENT_NOT_EXIST) {
                     /* Записываем в нового ребёнка номер индекса родителя (i), затем удаляем бывшего ребёнка: */
                     fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
-                    if (fwrite(&i, 5, 1, file->f) && removeEmbeddedDocument(file, oldChildIndexNumber, i)) {
+                    // TODO: дальше битовое поле, через & не получится, но надо)
+                    if (fwrite(ref->indexNumber, 5, 1, file->f) && removeEmbeddedDocument(file, oldChildIndexNumber, ref->indexNumber)) {
                         // Возвращаемся к обновляемому полю и записываем новое значение:
                         fseeko64(file->f, pos, SEEK_SET);
                         return fwrite(&value, 5, 1, file->f);

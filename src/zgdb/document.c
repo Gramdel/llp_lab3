@@ -91,12 +91,11 @@ bool moveFirstDocuments(zgdbFile* file) {
     return true;
 }
 
-// TODO: Передавать сюда схему. Добавить в заголовочный файл.
-uint64_t calcDocumentSize(element* elements, uint64_t elementCount) {
+uint64_t calcDocumentSize(documentSchema* schema) {
     uint64_t size = sizeof(documentHeader);
-    for (uint64_t i = 0; i < elementCount; i++) {
+    for (uint64_t i = 0; i < schema->elementCount; i++) {
         size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
-        element el = elements[i];
+        element el = schema->elements[i];
         switch (el.type) {
             case TYPE_INT:
                 size += sizeof(int32_t);
@@ -125,7 +124,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     }
     int64_t pos = ftello64(file->f); // сохраняем текущую позицию, чтобы вернуться в неё после записи
     documentHeader header;
-    header.size = calcDocumentSize(schema->elements, schema->elementCount);
+    header.size = calcDocumentSize(schema);
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
 
     // Сразу выделяем индексы, если список пустой:
@@ -247,72 +246,81 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
         printf("%*sDocument does not exist!\n\n", nestingLevel * 2, "");
     } else {
         zgdbIndex index = getIndex(file, i);
+        element* el;
         if (index.flag == INDEX_ALIVE) {
-            fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
-            documentHeader header;
-            if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-                printf("%*s### ID: %08X%016X SIZE: %ld ###\n", nestingLevel * 2, "", header.id.timestamp,
-                       header.id.offset, header.size);
-                uint64_t bytesRead = sizeof(documentHeader);
-                element el;
-                uint64_t tmp = 0; // для битового поля (documentValue)
-                while (bytesRead < header.size) {
-                    if (!fread(&el.type, sizeof(uint8_t), 1, file->f) ||
-                        fread(&el.key, sizeof(char), 13, file->f) != 13) {
-                        goto exit;
-                    }
-                    bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
-                    switch (el.type) {
-                        case TYPE_NOT_EXIST:
-                            bytesRead = header.size;
-                            break;
-                        case TYPE_INT:
-                            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            bytesRead += sizeof(int32_t);
-                            break;
-                        case TYPE_DOUBLE:
-                            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
-                                goto exit;
-                            }
-                            bytesRead += sizeof(double);
-                            break;
-                        case TYPE_BOOLEAN:
-                            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            bytesRead += sizeof(uint8_t);
-                            break;
-                        case TYPE_STRING:
-                            if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
-                            if (el.stringValue.data) {
-                                if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
-                                    el.stringValue.size) {
-                                    free(el.stringValue.data);
+            el = malloc(sizeof(element));
+            if (el) {
+                fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
+                documentHeader header;
+                if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+                    printf("%*s### ID: %08X%016X SIZE: %ld ###\n", nestingLevel * 2, "", header.id.timestamp,
+                           header.id.offset, header.size);
+                    uint64_t bytesRead = sizeof(documentHeader);
+                    uint64_t tmp = 0; // для битового поля (documentValue)
+                    while (bytesRead < header.size) {
+                        if (!fread(&el->type, sizeof(uint8_t), 1, file->f) ||
+                            fread(&el->key, sizeof(char), 13, file->f) != 13) {
+                            destroyElement(el);
+                            goto exit;
+                        }
+                        bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
+                        switch (el->type) {
+                            case TYPE_NOT_EXIST:
+                                bytesRead = header.size;
+                                break;
+                            case TYPE_INT:
+                                if (!fread(&el->integerValue, sizeof(int32_t), 1, file->f)) {
+                                    destroyElement(el);
                                     goto exit;
                                 }
-                            } else {
+                                bytesRead += sizeof(int32_t);
+                                break;
+                            case TYPE_DOUBLE:
+                                if (!fread(&el->doubleValue, sizeof(double), 1, file->f)) {
+                                    destroyElement(el);
+                                    goto exit;
+                                }
+                                bytesRead += sizeof(double);
+                                break;
+                            case TYPE_BOOLEAN:
+                                if (!fread(&el->booleanValue, sizeof(uint8_t), 1, file->f)) {
+                                    destroyElement(el);
+                                    goto exit;
+                                }
+                                bytesRead += sizeof(uint8_t);
+                                break;
+                            case TYPE_STRING:
+                                if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                                    el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
+                                    if (el->stringValue.data) {
+                                        if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
+                                            el->stringValue.size) {
+                                            bytesRead += sizeof(uint32_t) + sizeof(char) * el->stringValue.size;
+                                            break;
+                                        }
+                                        free(el->stringValue.data);
+                                    }
+                                }
+                                destroyElement(el);
                                 goto exit;
-                            }
-                            bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
-                            break;
-                        case TYPE_EMBEDDED_DOCUMENT:
-                            el.documentValue = malloc(sizeof(documentRef));
-                            if (!fread(&tmp, 5, 1, file->f) || !el.documentValue) {
+                            case TYPE_EMBEDDED_DOCUMENT:
+                                el->documentValue = malloc(sizeof(documentRef));
+                                if (el->documentValue) {
+                                    if (fread(&tmp, 5, 1, file->f)) {
+                                        el->documentValue->indexNumber = tmp;
+                                        bytesRead += 5;
+                                        break;
+                                    }
+                                    free(el->documentValue);
+                                }
+                                destroyElement(el);
                                 goto exit;
-                            }
-                            el.documentValue->indexNumber = tmp;
-                            bytesRead += 5;
-                            break;
+                        }
+                        printElementOfEmbeddedDocument(file, el, nestingLevel);
                     }
-                    printElementOfEmbeddedDocument(file, el, nestingLevel);
                     destroyElement(el);
+                    return;
                 }
-                return;
             }
         }
         exit:
@@ -327,6 +335,37 @@ void printDocument(zgdbFile* file, documentRef* ref) {
         printf("Document does not exist!\n");
     }
     printf("\n");
+}
+
+documentRef* getDocumentByID(zgdbFile* file, char* idAsString) {
+    if (idAsString && strlen(idAsString) == 24) {
+        // Разбиваем нашу idAsString на две hex-строки:
+        char timestampAsString[8];
+        char* offsetAsString = idAsString + 8;
+        strncpy(timestampAsString, idAsString, 8);
+        // Парсим:
+        documentId id;
+        id.timestamp = strtol(timestampAsString, NULL, 16);
+        id.offset = strtol(offsetAsString, NULL, 16);
+        for (uint64_t i = 0; i < file->header.indexCount; i++) {
+            zgdbIndex index = getIndex(file, i);
+            if (index.flag == INDEX_ALIVE) {
+                documentHeader header;
+                fseeko64(file->f, index.offset, SEEK_SET);
+                if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+                    break;
+                }
+                if (id.timestamp == header.id.timestamp && id.offset == header.id.offset) {
+                    documentRef* ref = malloc(sizeof(documentRef));
+                    if (ref) {
+                        ref->indexNumber = i;
+                    }
+                    return ref;
+                }
+            }
+        }
+    }
+    return NULL;
 }
 
 void destroyDocumentRef(documentRef* ref) {
