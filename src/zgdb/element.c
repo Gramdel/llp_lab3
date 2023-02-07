@@ -86,7 +86,8 @@ element* readElement(zgdbFile* file, char* neededKey, documentRef* ref) {
                     if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
                         el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
                         if (el->stringValue.data) {
-                            if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) == el->stringValue.size) {
+                            if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
+                                el->stringValue.size) {
                                 return el;
                             }
                             free(el->stringValue.data);
@@ -189,7 +190,8 @@ void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestin
     if (el) {
         switch (el->type) {
             case TYPE_NOT_EXIST:
-                printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2, "");
+                printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2,
+                       "");
                 break;
             case TYPE_INT:
                 printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el->key, el->integerValue);
@@ -247,21 +249,24 @@ bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, document
     if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
         return false;
     }
-    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_INT && fwrite(&value, sizeof(int32_t), 1, file->f);
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_INT &&
+           fwrite(&value, sizeof(int32_t), 1, file->f);
 }
 
 bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, documentRef* ref) {
     if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
         return false;
     }
-    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_DOUBLE && fwrite(&value, sizeof(double), 1, file->f);
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_DOUBLE &&
+           fwrite(&value, sizeof(double), 1, file->f);
 }
 
 bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, documentRef* ref) {
     if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
         return false;
     }
-    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_BOOLEAN && fwrite(&value, sizeof(uint8_t), 1, file->f);
+    return navigateToElement(file, neededKey, ref->indexNumber) == TYPE_BOOLEAN &&
+           fwrite(&value, sizeof(uint8_t), 1, file->f);
 }
 
 bool updateStringValue(zgdbFile* file, char* neededKey, char* value, documentRef* ref) {
@@ -398,32 +403,33 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, documentRef
     return true;
 }
 
-// TODO: передавать сюда новую схему
-bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, documentRef* ref) {
+bool updateDocumentValue(zgdbFile* file, char* neededKey, documentSchema* value, documentRef* ref) {
     if (!ref || ref->indexNumber == DOCUMENT_NOT_EXIST) {
         return false;
     }
     // Спускаемся к нужному элементу по ключу:
     if (navigateToElement(file, neededKey, ref->indexNumber) == TYPE_EMBEDDED_DOCUMENT) {
-        // Считываем предыдущее значение поля:
+        // Считываем предыдущее значение поля и удаляем документ с таким индексом, если он есть:
         int64_t pos = ftello64(file->f);
         uint64_t oldChildIndexNumber = 0;
-        if (fread(&oldChildIndexNumber, 5, 1, file->f) && oldChildIndexNumber != value) {
-            // Получаем индекс нового ребёнка, если он "жив", продолжаем:
-            zgdbIndex index = getIndex(file, value);
-            if (index.flag == INDEX_ALIVE) {
-                /* Спускаемся к хедеру нового ребёнка и пропускаем размер, номер индекса.
-                 * Считываем parentIndexNumber, если он равен DOCUMENT_NOT_EXIST, то продолжаем: */
-                fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
-                uint64_t parentIndexNumber = 0;
-                if (fread(&parentIndexNumber, 5, 1, file->f) && parentIndexNumber == DOCUMENT_NOT_EXIST) {
-                    /* Записываем в нового ребёнка номер индекса родителя (i), затем удаляем бывшего ребёнка: */
-                    fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
-                    // TODO: дальше битовое поле, через & не получится, но надо)
-                    if (fwrite(ref->indexNumber, 5, 1, file->f) && removeEmbeddedDocument(file, oldChildIndexNumber, ref->indexNumber)) {
-                        // Возвращаемся к обновляемому полю и записываем новое значение:
-                        fseeko64(file->f, pos, SEEK_SET);
-                        return fwrite(&value, 5, 1, file->f);
+        if (fread(&oldChildIndexNumber, 5, 1, file->f)) {
+            if (oldChildIndexNumber == DOCUMENT_NOT_EXIST ||
+                removeEmbeddedDocument(file, oldChildIndexNumber, ref->indexNumber) == INDEX_ALIVE) {
+                // Записываем нового ребёнка в файл:
+                documentRef* newValueRef = writeDocument(file, value);
+                if (newValueRef) {
+                    zgdbIndex index = getIndex(file, newValueRef->indexNumber);
+                    if (index.flag == INDEX_ALIVE) {
+                        /* Спускаемся к хедеру ребёнка и пропускаем размер, номер индекса.
+                         * Записываем parentIndexNumber: */
+                        uint64_t tmp = ref->indexNumber;
+                        fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
+                        if (fwrite(&tmp, 5, 1, file->f)) {
+                            // Возвращаемся к обновляемому полю и записываем новое значение:
+                            tmp = newValueRef->indexNumber;
+                            fseeko64(file->f, pos, SEEK_SET);
+                            return fwrite(&tmp, 5, 1, file->f);
+                        }
                     }
                 }
             }

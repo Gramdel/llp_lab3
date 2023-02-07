@@ -207,11 +207,16 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
             return INDEX_NOT_EXIST;
         }
 
-        /* Проверка на то, совпадает ли родитель удаляемого документа с parentIndexNumber.
-         * При попытке удалить вложенный документ напрямую (а не путем удаления его родителя), должен вернуться INDEX_NOT_EXIST.
-         * Если же идёт поиск детей (parentIndexNumber != DOCUMENT_NOT_EXIST), то нужно вернуть indexFlag: */
-        if (parentIndexNumber != header.parentIndexNumber) {
-            return parentIndexNumber == DOCUMENT_NOT_EXIST ? INDEX_NOT_EXIST : index.flag;
+        /* Если номер индекса документа-родителя не совпадает с header.parentIndexNumber в документе-ребёнке, и при этом
+         * инициатор удаления - документ, а не пользователь (т.е. номер индекса документа-родителя отличен от DOCUMENT_NOT_EXIST),
+         * то нужно отменить удаление: */
+        if (parentIndexNumber != header.parentIndexNumber && parentIndexNumber != DOCUMENT_NOT_EXIST) {
+            return index.flag;
+        }
+
+        // Если header.parentIndexNumber в документе-ребёнке не равен DOCUMENT_NOT_EXIST, то обновляем информацию в родителе:
+        if (header.parentIndexNumber != DOCUMENT_NOT_EXIST) {
+            // Обновляем
         }
 
         // Изменяем флаг индекса документа и добавляем дырку в список:

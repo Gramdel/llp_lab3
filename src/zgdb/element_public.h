@@ -68,6 +68,6 @@ bool updateStringValue(zgdbFile* file, char* neededKey, char* value, documentRef
 
 /* Функция для обновления значения у элемента типа TYPE_EMBEDDED_DOCUMENT.
  * Возвращает false при неудаче. */
-bool updateDocumentValue(zgdbFile* file, char* neededKey, uint64_t value, documentRef* ref);
+bool updateDocumentValue(zgdbFile* file, char* neededKey, documentSchema* value, documentRef* ref);
 
 #endif

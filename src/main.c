@@ -44,11 +44,14 @@ int main(int argc, char** argv) {
         addStringToSchema(root2Schema, "rootString", "I AM ROOT");
         addEmbeddedDocumentToSchema(root2Schema, "child", childSchema);
     }
-    documentRef* root1 = getDocumentByID(file, "63AC2DFE000000000000006C");
-    //documentRef* root1 = writeDocument(file, root1Schema);
+    //documentRef* root1 = getDocumentByID(file, "63AC2DFE000000000000006C");
+    documentRef* root1 = writeDocument(file, root1Schema);
     documentRef* root2 = writeDocument(file, root2Schema);
 
     printDocument(file, root1);
+    printDocument(file, root2);
+
+    updateDocumentValue(file, "child", grandChildSchema, root2);
     printDocument(file, root2);
 
     /*
