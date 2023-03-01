@@ -7,7 +7,7 @@
 
 #include "element.h"
 
-// Типы операций. Логические операции применимы ТОЛЬКО к условиям (чтобы делать, например, нечто вроде !cond1 || cond2)
+/* Типы операций. Логические операции применимы ТОЛЬКО к условиям (чтобы делать, например, нечто вроде !cond1 || cond2) */
 typedef enum operationType {
     OP_EQ = 0, // операция "=="
     OP_NEQ, // операция "!="
@@ -20,7 +20,8 @@ typedef enum operationType {
     OP_NOT, // операция "!"
 } operationType;
 
-// Структура для условия.
+/* Структура для условия. В случае унарной операции (она одна - OP_NOT), второй операнд (condition2) равен
+ * первому (condition1) */
 typedef struct condition condition;
 struct condition {
     operationType opType; // тип операции
@@ -36,7 +37,8 @@ struct condition {
 
 struct query {
     bool isMutation;
-
+    condition* cond;
+    element* newElement;
 };
 
 #endif

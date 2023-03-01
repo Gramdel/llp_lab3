@@ -1,4 +1,5 @@
 #include <string.h>
+#include <malloc.h>
 
 #include "query.h"
 
@@ -20,13 +21,6 @@ int32_t compare(element* el1, element* el2) {
 }
 
 bool checkCondition(condition* cond) {
-    /* Проверка на то, что само условие и его операнды не NULL (кроме операции "!", там второй операнд игнорируется).
-     * Также, для НЕ логических операций, нужно, чтобы тип элементов совпадал. */
-    if (!cond || !cond->condition1 || (cond->opType != OP_NOT && !cond->condition2) ||
-        (cond->opType < OP_AND && cond->element1->type != cond->element2->type)) {
-        return false;
-    }
-
     switch (cond->opType) {
         case OP_EQ:
             return compare(cond->element1, cond->element2) == 0;
@@ -47,4 +41,24 @@ bool checkCondition(condition* cond) {
         case OP_NOT:
             return !checkCondition(cond->condition1);
     }
+}
+
+condition* createSimpleCondition(operationType type, element* el1, element* el2) {
+    condition* cond = NULL;
+    if (type < 6 && el1 && el2 && (el1->type == el2->type) && (cond = malloc(sizeof(condition)))) {
+        cond->opType = type;
+        cond->element1 = el1;
+        cond->element2 = el2;
+    }
+    return cond;
+}
+
+condition* createComplexCondition(operationType type, condition* cond1, condition* cond2) {
+    condition* cond = NULL;
+    if (type >= 6 && cond1 && cond2 && (cond = malloc(sizeof(condition)))) {
+        cond->opType = type;
+        cond->condition1 = cond1;
+        cond->condition2 = cond2;
+    }
+    return cond;
 }
