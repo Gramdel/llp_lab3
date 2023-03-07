@@ -5,6 +5,61 @@
 #include "document.h"
 #include "element.h"
 
+element* createPointerToElement(char* key, element el) {
+    if (key && strlen(key) <= 12) {
+        element* ptr = malloc(sizeof(element));
+        if (ptr) {
+            *ptr = el;
+            memset(ptr->key, 0, 13);
+            strncpy(ptr->key, key, 13);
+            return ptr;
+        }
+    }
+    return NULL;
+}
+
+element* intElement(char* key, int32_t value) {
+    return createPointerToElement(key, (element) { .type = TYPE_INT, .integerValue = value });
+}
+
+element* doubleElement(char* key, double value) {
+    return createPointerToElement(key, (element) { .type = TYPE_DOUBLE, .doubleValue = value });
+}
+
+element* booleanElement(char* key, bool value) {
+    return createPointerToElement(key, (element) { .type = TYPE_BOOLEAN, .booleanValue = (uint8_t) value });
+}
+
+element* stringElement(char* key, char* value) {
+    if (value) {
+        return createPointerToElement(key, (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1,
+                                                                                                   value }});
+    }
+    return NULL;
+}
+
+element* embeddedDocumentElement(char* key, documentSchema* embeddedSchema) {
+    if (embeddedSchema) {
+        return createPointerToElement(key, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .schemaValue = embeddedSchema });
+    }
+    return NULL;
+}
+
+void destroyElement(element* el) {
+    if (el) {
+        if (el->type == TYPE_STRING) {
+            if (el->stringValue.data) {
+                free(el->stringValue.data);
+            }
+        } else if (el->type == TYPE_EMBEDDED_DOCUMENT) {
+            if (el->documentValue) {
+                free(el->documentValue);
+            }
+        }
+        free(el);
+    }
+}
+
 uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     documentRef* ref; // переменная для ссылки на вложенный документ
     uint64_t bytesWritten = 0;
@@ -169,21 +224,6 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
     }
     exit:
     return TYPE_NOT_EXIST;
-}
-
-void destroyElement(element* el) {
-    if (el) {
-        if (el->type == TYPE_STRING) {
-            if (el->stringValue.data) {
-                free(el->stringValue.data);
-            }
-        } else if (el->type == TYPE_EMBEDDED_DOCUMENT) {
-            if (el->documentValue) {
-                free(el->documentValue);
-            }
-        }
-        free(el);
-    }
 }
 
 void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestingLevel) {

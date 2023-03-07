@@ -2,6 +2,7 @@
 #include <malloc.h>
 #include "zgdb/document_public.h"
 #include "zgdb/element_public.h"
+#include "zgdb/query.h"
 
 int main(int argc, char** argv) {
     zgdbFile* file = loadFile("test");
@@ -12,6 +13,8 @@ int main(int argc, char** argv) {
             exit(-1);
         }
     }
+
+    /*
 
     documentSchema* root1Schema = createSchema(6); // size
     if (root1Schema) {
@@ -99,6 +102,14 @@ int main(int argc, char** argv) {
     destroyElement(el5);
     //*/
 
+    element test = {TYPE_BOOLEAN, "test", 1};
+    element el1 = {TYPE_INT, "int1", 123};
+    element el2 = {TYPE_INT, "int2", 100};
+    condition* cond = condOr(condEqual(&el1), condLess(&el2));
+    printf(checkCondition(&test, cond) ? "true\n" : "false\n");
+
+    /*
+
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);
 
@@ -106,6 +117,8 @@ int main(int argc, char** argv) {
     destroySchema(grandChildSchema);
     destroySchema(root1Schema);
     destroySchema(root2Schema);
+
+    */
 
     closeFile(file);
     return 0;

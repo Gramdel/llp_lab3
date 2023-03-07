@@ -4,6 +4,7 @@
 
 #include "document.h"
 #include "element.h"
+#include "query.h"
 
 bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
@@ -442,4 +443,63 @@ bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSche
                                   key);
     }
     return false;
+}
+
+documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
+    if (parent && parent->indexNumber != DOCUMENT_NOT_EXIST) {
+        zgdbIndex index = getIndex(file, parent->indexNumber);
+        if (index.flag == INDEX_ALIVE) {
+            fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
+            documentHeader header;
+            if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+                uint64_t bytesRead = sizeof(documentHeader);
+                element el;
+                uint64_t childIndexNumber = 0;
+                while (bytesRead < header.size) {
+                    if (!fread(&el.type, sizeof(uint8_t), 1, file->f) ||
+                        fread(&el.key, sizeof(char), 13, file->f) != 13) {
+                        goto exit;
+                    } else {
+                        bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
+                        switch (el.type) {
+                            case TYPE_NOT_EXIST:
+                                bytesRead = header.size;
+                                break;
+                            case TYPE_INT:
+                                fseeko64(file->f, sizeof(int32_t), SEEK_CUR);
+                                bytesRead += sizeof(int32_t);
+                                break;
+                            case TYPE_DOUBLE:
+                                fseeko64(file->f, sizeof(double), SEEK_CUR);
+                                bytesRead += sizeof(double);
+                                break;
+                            case TYPE_BOOLEAN:
+                                fseeko64(file->f, sizeof(uint8_t), SEEK_CUR);
+                                bytesRead += sizeof(uint8_t);
+                                break;
+                            case TYPE_STRING:
+                                if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                                    goto exit;
+                                }
+                                fseeko64(file->f, el.stringValue.size, SEEK_CUR);
+                                bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
+                                break;
+                            case TYPE_EMBEDDED_DOCUMENT:
+                                if (!fread(&childIndexNumber, 5, 1, file->f)) {
+                                    goto exit;
+                                }
+                                bytesRead += 5;
+
+                                if (childIndexNumber != DOCUMENT_NOT_EXIST) {
+                                    // TODO: вызов проверки для ребёнка на соответствие условию
+                                }
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    exit:
+    return NULL;
 }

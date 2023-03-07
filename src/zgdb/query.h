@@ -24,15 +24,13 @@ typedef enum operationType {
  * первому (condition1) */
 typedef struct condition condition;
 struct condition {
+    bool isMet;
     operationType opType; // тип операции
     union {
-        element* element1; // первый элемент для сравнения (если операция - НЕ логическая)
-        condition* condition1; // первое условие для сравнения (если операция - логическая)
+        element* el; // элемент для сравнения (если операция - НЕ логическая)
+        condition* cond1; // первое условие (если операция - логическая)
     };
-    union {
-        element* element2; // второй элемент для сравнения (если операция - НЕ логическая)
-        condition* condition2; // второе условие для сравнения (если операция - логическая и НЕ "!")
-    };
+    condition* cond2; // второе условие (если операция - логическая и НЕ "!")
 };
 
 struct query {
@@ -40,5 +38,17 @@ struct query {
     condition* cond;
     element* newElement;
 };
+
+bool checkCondition(element* el, condition* cond);
+
+condition* condEqual(element* el);
+condition* condNotEqual(element* el);
+condition* condLess(element* el);
+condition* condLessOrEqual(element* el);
+condition* condGreater(element* el);
+condition* condGreaterOrEqual(element* el);
+condition* condAnd(condition* cond1, condition* cond2);
+condition* condOr(condition* cond1, condition* cond2);
+condition* condNot(condition* cond);
 
 #endif

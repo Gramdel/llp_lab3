@@ -3,6 +3,17 @@
 
 #include "query.h"
 
+bool executeQuery(documentRef* parent, documentSchema* neededSchema, condition* cond) {
+    // TODO: вызов функции find
+    return true;
+}
+
+// TODO: подумать над тем, каким образом передавать новые значения полей
+bool executeMutation(documentRef* parent, documentSchema* neededSchema, condition* cond) {
+    // TODO: вызов функции find
+    return true;
+}
+
 int32_t compare(element* el1, element* el2) {
     switch (el1->type) {
         case TYPE_INT:
@@ -20,45 +31,101 @@ int32_t compare(element* el1, element* el2) {
     return 0;
 }
 
-bool checkCondition(condition* cond) {
+bool checkCondition(element* el, condition* cond) {
+    // Если условие уже проверялось, то нет смысла проверять его ещё раз:
+    if (cond->isMet) {
+        return true;
+    }
+
+    // Если у элементов не совпадает тип или ключ, то нет смысла их сравнивать:
+    if (cond->opType < OP_AND && (el->type != cond->el->type || !strcmp(el->key, cond->el->key))) {
+        return false;
+    }
+
+    // Проверяем условие в зависимости от типа операции:
+    bool result;
     switch (cond->opType) {
         case OP_EQ:
-            return compare(cond->element1, cond->element2) == 0;
+            result = compare(el, cond->el) == 0;
+            break;
         case OP_NEQ:
-            return compare(cond->element1, cond->element2) != 0;
+            result = compare(el, cond->el) != 0;
+            break;
         case OP_GT:
-            return compare(cond->element1, cond->element2) > 0;
+            result = compare(el, cond->el) > 0;
+            break;
         case OP_GTE:
-            return compare(cond->element1, cond->element2) >= 0;
+            result = compare(el, cond->el) >= 0;
+            break;
         case OP_LE:
-            return compare(cond->element1, cond->element2) < 0;
+            result = compare(el, cond->el) < 0;
+            break;
         case OP_LEE:
-            return compare(cond->element1, cond->element2) <= 0;
+            result = compare(el, cond->el) <= 0;
+            break;
         case OP_AND:
-            return checkCondition(cond->condition1) && checkCondition(cond->condition2);
+            result = checkCondition(el, cond->cond1) && checkCondition(el, cond->cond2);
+            break;
         case OP_OR:
-            return checkCondition(cond->condition1) || checkCondition(cond->condition2);
+            result = checkCondition(el, cond->cond1) || checkCondition(el, cond->cond2);
+            break;
         case OP_NOT:
-            return !checkCondition(cond->condition1);
+            result = !checkCondition(el, cond->cond1);
+            break;
     }
+
+    // Если условие выполнилось, то записываем в него эту информацию:
+    if (result) {
+        cond->isMet = true;
+    }
+    return result;
 }
 
-condition* createSimpleCondition(operationType type, element* el1, element* el2) {
+// PRIVATE
+condition* createCondition(operationType type, void* operand1, void* operand2) {
     condition* cond = NULL;
-    if (type < 6 && el1 && el2 && (el1->type == el2->type) && (cond = malloc(sizeof(condition)))) {
+    if ((cond = malloc(sizeof(condition)))) {
+        cond->isMet = false;
         cond->opType = type;
-        cond->element1 = el1;
-        cond->element2 = el2;
+        cond->cond1 = operand1;
+        cond->cond2 = operand2;
     }
     return cond;
 }
 
-condition* createComplexCondition(operationType type, condition* cond1, condition* cond2) {
-    condition* cond = NULL;
-    if (type >= 6 && cond1 && cond2 && (cond = malloc(sizeof(condition)))) {
-        cond->opType = type;
-        cond->condition1 = cond1;
-        cond->condition2 = cond2;
-    }
-    return cond;
+// PUBLIC
+condition* condEqual(element* el) {
+    return el ? createCondition(OP_EQ, el, NULL) : NULL;
+}
+
+condition* condNotEqual(element* el) {
+    return el ? createCondition(OP_NEQ, el, NULL) : NULL;
+}
+
+condition* condGreater(element* el) {
+    return el ? createCondition(OP_GT, el, NULL) : NULL;
+}
+
+condition* condGreaterOrEqual(element* el) {
+    return el ? createCondition(OP_GTE, el, NULL) : NULL;
+}
+
+condition* condLess(element* el) {
+    return el ? createCondition(OP_LE, el, NULL) : NULL;
+}
+
+condition* condLessOrEqual(element* el) {
+    return el ? createCondition(OP_LEE, el, NULL) : NULL;
+}
+
+condition* condAnd(condition* cond1, condition* cond2) {
+    return (cond1 && cond2) ? createCondition(OP_AND, cond1, cond2) : NULL;
+}
+
+condition* condOr(condition* cond1, condition* cond2) {
+    return (cond1 && cond2) ? createCondition(OP_OR, cond1, cond2) : NULL;
+}
+
+condition* condNot(condition* cond) {
+    return cond ? createCondition(OP_NOT, cond, NULL) : NULL;
 }
