@@ -112,58 +112,63 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     return bytesWritten;
 }
 
-element* readElement(zgdbFile* file, char* neededKey, documentRef* ref) {
-    if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
-        uint64_t tmp = 0; // для битового поля (documentValue)
-        element* el = malloc(sizeof(element));
-        if (el) {
-            strcpy(el->key, neededKey);
-            el->type = navigateToElement(file, neededKey, ref->indexNumber);
-            switch (el->type) {
-                case TYPE_NOT_EXIST:
-                    break;
-                case TYPE_INT:
-                    if (fread(&el->integerValue, sizeof(int32_t), 1, file->f)) {
-                        return el;
-                    }
-                    break;
-                case TYPE_DOUBLE:
-                    if (fread(&el->doubleValue, sizeof(double), 1, file->f)) {
-                        return el;
-                    }
-                    break;
-                case TYPE_BOOLEAN:
-                    if (fread(&el->booleanValue, sizeof(uint8_t), 1, file->f)) {
-                        return el;
-                    }
-                    break;
-                case TYPE_STRING:
-                    if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                        el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
-                        if (el->stringValue.data) {
-                            if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
-                                el->stringValue.size) {
-                                return el;
-                            }
-                            free(el->stringValue.data);
+uint64_t readElement(zgdbFile* file, element* el) {
+    documentRef* ref; // переменная для ссылки на вложенный документ
+    if (fread(&el->type, sizeof(uint8_t), 1, file->f) && fread(&el->key, sizeof(char), 13, file->f) == 13) {
+        uint64_t bytesRead = sizeof(uint8_t) + sizeof(char) * 13;
+        switch (el->type) {
+            case TYPE_NOT_EXIST:
+                return bytesRead;
+            case TYPE_INT:
+                return fread(&el->integerValue, sizeof(int32_t), 1, file->f) ? bytesRead + sizeof(int32_t) : 0;
+            case TYPE_DOUBLE:
+                return fread(&el->doubleValue, sizeof(double), 1, file->f) ? bytesRead + sizeof(double) : 0;
+            case TYPE_BOOLEAN:
+                return fread(&el->booleanValue, sizeof(uint8_t), 1, file->f) ? bytesRead + sizeof(uint8_t) : 0;
+            case TYPE_STRING:
+                if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                    el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
+                    if (el->stringValue.data) {
+                        if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
+                            el->stringValue.size) {
+                            return bytesRead + sizeof(uint32_t) + el->stringValue.size;
                         }
+                        free(el->stringValue.data);
                     }
-                    break;
-                case TYPE_EMBEDDED_DOCUMENT:
-                    el->documentValue = malloc(sizeof(documentRef));
-                    if (el->documentValue) {
-                        if (fread(&tmp, 5, 1, file->f)) {
-                            el->documentValue->indexNumber = tmp;
-                            return el;
-                        }
-                        free(el->documentValue);
+                }
+                return 0;
+            case TYPE_EMBEDDED_DOCUMENT:
+                ref = writeDocument(file, el->schemaValue);
+                if (!ref) {
+                    return 0;
+                }
+
+                uint64_t tmp = ref->indexNumber; // для битового поля
+                bytesRead += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
+                int64_t pos = ftello64(file->f); // сохраняем позицию до записи заголовков вложенного документа
+
+                // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
+                zgdbIndex index = getIndex(file, tmp);
+                if (index.flag != INDEX_ALIVE) {
+                    return 0;
+                } else {
+                    /* Спускаемся к хедеру ребёнка и пропускаем размер, номер индекса.
+                     * Считываем parentIndexNumber, если он не равен DOCUMENT_NOT_EXIST, то завершаем выполнение: */
+                    fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
+                    if (!fread(&tmp, 5, 1, file->f) || tmp != DOCUMENT_NOT_EXIST) {
+                        return 0;
                     }
-                    break;
-            }
-            free(el);
+                    // Снова спускаемся к хедеру. Записываем parentIndexNumber:
+                    fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
+                    if (!fwrite(&parentIndexNumber, 5, 1, file->f)) {
+                        return 0;
+                    }
+                }
+                fseeko64(file->f, pos, SEEK_SET); // восстанавливаем позицию
+                break;
         }
     }
-    return NULL;
+    return 0;
 }
 
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {

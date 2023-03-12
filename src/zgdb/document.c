@@ -121,12 +121,13 @@ uint64_t calcDocumentSize(documentSchema* schema) {
 
 documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     if (!schema) {
-        return false;
+        return NULL;
     }
     int64_t pos = ftello64(file->f); // сохраняем текущую позицию, чтобы вернуться в неё после записи
     documentHeader header;
     header.size = calcDocumentSize(schema);
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
+    strcpy(header.schemaName, schema->name);
 
     // Сразу выделяем индексы, если список пустой:
     if (!file->list.front && !moveFirstDocuments(file)) {
@@ -387,9 +388,11 @@ documentSchema* createSchema(uint64_t capacity) {
         if (schema->elements) {
             schema->elementCount = 0;
             schema->capacity = capacity;
+            return schema;
         }
+        free(schema);
     }
-    return schema;
+    return NULL;
 }
 
 void destroySchema(documentSchema* schema) {
@@ -439,31 +442,28 @@ bool addStringToSchema(documentSchema* schema, char* key, char* value) {
 
 bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSchema* embeddedSchema) {
     if (embeddedSchema && schema != embeddedSchema) {
+        strncpy(embeddedSchema->name, key, 13);
         return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .schemaValue = embeddedSchema },
                                   key);
     }
     return false;
 }
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* neededSchema, condition* cond) {
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
+    bool result;
     zgdbIndex index = getIndex(file, indexNumber);
     if (index.flag == INDEX_ALIVE) {
         fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
         documentHeader header;
-        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+        if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
             uint64_t bytesRead = sizeof(documentHeader);
-            for (uint64_t i = 0; i < neededSchema->elementCount && bytesRead < header.size; i++) {
+            while (bytesRead < header.size) {
                 element el;
                 uint64_t tmp = 0;
                 if (!fread(&el.type, sizeof(uint8_t), 1, file->f) || fread(&el.key, sizeof(char), 13, file->f) != 13) {
                     goto exit;
                 } else {
-                    // Если схема документа отличается от требуемой, то возвращаем false:
-                    if (!strcmp(neededSchema->elements[i].key, el.key)) {
-                        return false;
-                    }
                     bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
-
                     switch (el.type) {
                         case TYPE_NOT_EXIST:
                             // TODO: выход из документа
@@ -484,18 +484,21 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* neededS
                             }
                             break;
                         case TYPE_STRING:
-                            if (fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                                el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
-                                if (el.stringValue.data) {
-                                    if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
-                                        el.stringValue.size) {
-                                        free(el.stringValue.data);
-                                        goto exit;
-                                    }
-                                }
+                            if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
+                            if (!el.stringValue.data) {
+                                goto exit;
+                            }
+                            if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
+                                el.stringValue.size) {
+                                free(el.stringValue.data);
+                                goto exit;
                             }
                             break;
                         case TYPE_EMBEDDED_DOCUMENT:
+                            // TODO: подумать о том, как сравнить
                             el.documentValue = malloc(sizeof(documentRef));
                             if (el.documentValue) {
                                 if (!fread(&tmp, 5, 1, file->f)) {
@@ -509,6 +512,7 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* neededS
                     checkCondition(&el, cond);
                 }
             }
+            return cond->isMet;
         }
     }
     exit:

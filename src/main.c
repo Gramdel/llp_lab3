@@ -14,8 +14,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    /*
-
     documentSchema* root1Schema = createSchema(6); // size
     if (root1Schema) {
         addBooleanToSchema(root1Schema, "isFirst", false);
@@ -54,53 +52,10 @@ int main(int argc, char** argv) {
     printDocument(file, root1);
     printDocument(file, root2);
 
-    updateDocumentValue(file, "child", grandChildSchema, root2);
-    printDocument(file, root2);
+    //updateDocumentValue(file, "child", grandChildSchema, root2);
+    //printDocument(file, root2);
 
     /*
-    documentRef* root3 = writeDocument(file, grandChildSchema);
-    writeDocument(file, root1Schema);
-    writeDocument(file, root1Schema);
-    writeDocument(file, root1Schema);
-    writeDocument(file, root1Schema);
-    writeDocument(file, root1Schema);
-
-    removeDocument(file, root3);
-    printDocument(file, root3);
-
-    printDocument(file, writeDocument(file, childSchema));
-    printDocument(file, root1);
-
-    */
-
-
-    /*
-    printf("updated? %d\n", updateIntegerValue(file, "rootInt1", 808, root2));
-    printf("updated? %d\n", updateBooleanValue(file, "isFirst", false, root2));
-    printf("updated? %d\n", updateDoubleValue(file, "rootDouble", -2.5, root2));
-    printf("updated? %d\n", updateStringValue(file, "rootString", "I AM STRINGG", root2));
-    //printf("updated? %d\n", updateDocumentValue(file, "child", grandChildSchema, root2));
-
-    element* el1 = readElement(file, "rootInt1", root2);
-    element* el2 = readElement(file, "isFirst", root2);
-    element* el3 = readElement(file, "rootDouble", root2);
-    element* el4 = readElement(file, "rootString", root2);
-    element* el5 = readElement(file, "child", root2);
-
-    printElement(file, el1);
-    printElement(file, el2);
-    printElement(file, el3);
-    printElement(file, el4);
-    printElement(file, el5);
-
-    printDocument(file, root2);
-
-    destroyElement(el1);
-    destroyElement(el2);
-    destroyElement(el3);
-    destroyElement(el4);
-    destroyElement(el5);
-    //*/
 
     element test = {TYPE_BOOLEAN, "test", 1};
     element el1 = {TYPE_INT, "int1", 123};
@@ -108,7 +63,8 @@ int main(int argc, char** argv) {
     condition* cond = condOr(condEqual(&el1), condLess(&el2));
     printf(checkCondition(&test, cond) ? "true\n" : "false\n");
 
-    /*
+    */
+
 
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);
@@ -117,8 +73,6 @@ int main(int argc, char** argv) {
     destroySchema(grandChildSchema);
     destroySchema(root1Schema);
     destroySchema(root2Schema);
-
-    */
 
     closeFile(file);
     return 0;

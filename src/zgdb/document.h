@@ -18,9 +18,10 @@ struct documentRef {
 };
 
 struct documentSchema {
-    element* elements;
-    uint64_t elementCount;
-    uint64_t capacity;
+    element* elements; // указатель на массив элементов
+    uint64_t elementCount; // текущее количество элементов в массиве
+    uint64_t capacity; // размер массива (максимальное число элементов, которое он может вместить без реаллокаций)
+    char name[13];
 };
 
 /* Структура для заголовка документа. */
@@ -29,6 +30,7 @@ typedef struct __attribute__((packed)) documentHeader {
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
     uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу
     documentId id; // id, привязанный к документу
+    char schemaName[13]; // имя схемы, по которой построен документ
 } documentHeader;
 
 /* Функция для расчёта размера будущего документа по схеме. */

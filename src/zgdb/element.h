@@ -26,6 +26,11 @@ struct element {
  * Возвращает количество записанных байт. */
 uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber);
 
+/* Функция для чтения элемента из документа.
+ * ВНИМАНИЕ: Предполагается, что к моменту вызова функции fseek уже сделан.
+ * Возвращает количество прочитанных байт. */
+uint64_t readElement(zgdbFile* file, element* el);
+
 /* Функция для поиска элемента в документе. Устанавливает с помощью fseek смещение на начало элемента.
  * Возвращает тип найденного элемента или TYPE_NOT_EXIST (при ошибке). */
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i);

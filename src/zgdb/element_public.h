@@ -23,10 +23,6 @@ typedef enum elementType {
 /* Структура для элемента документа. */
 typedef struct element element;
 
-/* Функция для чтения элемента из документа по ключу.
- * Возвращает NULL при неудаче. */
-element* readElement(zgdbFile* file, char* neededKey, documentRef* ref);
-
 /* Функция для уничтожения элемента. */
 void destroyElement(element* el);
 
