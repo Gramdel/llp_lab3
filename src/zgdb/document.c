@@ -445,6 +445,76 @@ bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSche
     return false;
 }
 
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* neededSchema, condition* cond) {
+    zgdbIndex index = getIndex(file, indexNumber);
+    if (index.flag == INDEX_ALIVE) {
+        fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
+        documentHeader header;
+        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+            uint64_t bytesRead = sizeof(documentHeader);
+            for (uint64_t i = 0; i < neededSchema->elementCount && bytesRead < header.size; i++) {
+                element el;
+                uint64_t tmp = 0;
+                if (!fread(&el.type, sizeof(uint8_t), 1, file->f) || fread(&el.key, sizeof(char), 13, file->f) != 13) {
+                    goto exit;
+                } else {
+                    // Если схема документа отличается от требуемой, то возвращаем false:
+                    if (!strcmp(neededSchema->elements[i].key, el.key)) {
+                        return false;
+                    }
+                    bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
+
+                    switch (el.type) {
+                        case TYPE_NOT_EXIST:
+                            // TODO: выход из документа
+                            break;
+                        case TYPE_INT:
+                            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            break;
+                        case TYPE_DOUBLE:
+                            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
+                                goto exit;
+                            }
+                            break;
+                        case TYPE_BOOLEAN:
+                            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
+                                goto exit;
+                            }
+                            break;
+                        case TYPE_STRING:
+                            if (fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                                el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
+                                if (el.stringValue.data) {
+                                    if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
+                                        el.stringValue.size) {
+                                        free(el.stringValue.data);
+                                        goto exit;
+                                    }
+                                }
+                            }
+                            break;
+                        case TYPE_EMBEDDED_DOCUMENT:
+                            el.documentValue = malloc(sizeof(documentRef));
+                            if (el.documentValue) {
+                                if (!fread(&tmp, 5, 1, file->f)) {
+                                    free(el.documentValue);
+                                    goto exit;
+                                }
+                                el.documentValue->indexNumber = tmp;
+                            }
+                            break;
+                    }
+                    checkCondition(&el, cond);
+                }
+            }
+        }
+    }
+    exit:
+    return NULL;
+}
+
 documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
     if (parent && parent->indexNumber != DOCUMENT_NOT_EXIST) {
         zgdbIndex index = getIndex(file, parent->indexNumber);
@@ -490,8 +560,9 @@ documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchem
                                 }
                                 bytesRead += 5;
 
-                                if (childIndexNumber != DOCUMENT_NOT_EXIST) {
-                                    // TODO: вызов проверки для ребёнка на соответствие условию
+                                if (childIndexNumber != DOCUMENT_NOT_EXIST &&
+                                    checkDocument(file, childIndexNumber, neededSchema, cond)) {
+                                    // TODO: добавить documentRef в вывод функции
                                 }
                                 break;
                         }
