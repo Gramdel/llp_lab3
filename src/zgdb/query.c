@@ -37,12 +37,10 @@ bool checkCondition(element* el, condition* cond) {
     if (cond->isMet) {
         return true;
     }
-
     // Если у элементов не совпадает тип или ключ, то нет смысла их сравнивать:
     if (cond->opType < OP_AND && (el->type != cond->el->type || strcmp(el->key, cond->el->key) != 0)) {
         return false;
     }
-
     // Проверяем условие в зависимости от типа операции:
     bool result;
     switch (cond->opType) {
@@ -74,12 +72,22 @@ bool checkCondition(element* el, condition* cond) {
             result = !checkCondition(el, cond->cond1);
             break;
     }
-
     // Если условие выполнилось, то записываем в него эту информацию:
     if (result) {
         cond->isMet = true;
     }
     return result;
+}
+
+void resetCondition(condition* cond) {
+    if (cond) {
+        if (cond->opType < OP_AND) {
+            cond->isMet = false;
+        } else {
+            resetCondition(cond->cond1);
+            resetCondition(cond->cond2);
+        }
+    }
 }
 
 // PRIVATE

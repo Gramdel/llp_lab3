@@ -53,7 +53,8 @@ int main(int argc, char** argv) {
     condition* cond = condOr(condEqual(intElement("childInt11", 111)), condLess(intElement("childInt2", 250)));
 
     printf("RESULT OF FIND:\n");
-    findAllDocuments(file, root2, childSchema, cond);
+    iterator* it = findAllDocuments(file, root2, childSchema, cond);
+    next(file, it);
 
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);

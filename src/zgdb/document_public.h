@@ -20,6 +20,8 @@ typedef struct documentSchema documentSchema;
  * Возвращает ссылку на документ или NULL (при неудаче). */
 documentRef* writeDocument(zgdbFile* file, documentSchema* schema);
 
+documentSchema* readDocument(zgdbFile* file, uint64_t indexNumber);
+
 /* Функция для удаления документа из файла. Вне зависимости от результата, делает ссылку на документ недоступной.
  * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, documentRef* ref);

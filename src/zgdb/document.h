@@ -7,6 +7,7 @@
 #include "query.h"
 #include "document_public.h"
 #include "element_public.h"
+#include "iterator_public.h"
 
 /* Структура для id, привязанного к документу. */
 typedef struct __attribute__((packed)) documentId {
@@ -50,6 +51,6 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
 /* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
 void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
 
-documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond);
+iterator* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond);
 
 #endif

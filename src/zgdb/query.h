@@ -40,4 +40,6 @@ struct query {
 
 bool checkCondition(element* el, condition* cond);
 
+void resetCondition(condition* cond);
+
 #endif

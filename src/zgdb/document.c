@@ -5,6 +5,7 @@
 #include "document.h"
 #include "element.h"
 #include "query.h"
+#include "iterator.h"
 
 bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
@@ -197,6 +198,10 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     }
     fseeko64(file->f, pos, SEEK_SET);
     return ref;
+}
+
+documentSchema* readDocument(zgdbFile* file, uint64_t indexNumber) {
+    return NULL;
 }
 
 indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber) {
@@ -473,35 +478,43 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName,
     return false;
 }
 
-documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
+iterator* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
     if (parent && parent->indexNumber != DOCUMENT_NOT_EXIST) {
         zgdbIndex index = getIndex(file, parent->indexNumber);
         if (index.flag == INDEX_ALIVE) {
             fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
             documentHeader header;
             if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-                uint64_t bytesRead = sizeof(documentHeader);
-                while (bytesRead < header.size) {
-                    element el;
-                    uint64_t tmp = readElement(file, &el, true);
-                    if (!tmp) {
-                        return false;
-                    }
-                    // Если был достигнут конец документа (пустое место в нём), то выходим из цикла:
-                    if (el.type == TYPE_NOT_EXIST) {
-                        bytesRead = header.size;
-                    } else if (el.type == TYPE_EMBEDDED_DOCUMENT) {
-                        bytesRead += tmp;
-                        if (checkDocument(file, el.documentValue.indexNumber, neededSchema->name, cond)) {
-                            // TODO: тут должно быть добавление в итератор, но пока просто выведем документ:
-                            printDocument(file, &el.documentValue);
+                iterator* it = createIterator();
+                if (it) {
+                    uint64_t bytesRead = sizeof(documentHeader);
+                    while (bytesRead < header.size) {
+                        element el;
+                        uint64_t tmp = readElement(file, &el, true);
+                        if (!tmp) {
+                            destroyIterator(it);
+                            return NULL;
                         }
-                        // TODO: reset states of conditions in "cond"
+                        switch(el.type) {
+                            case TYPE_NOT_EXIST:
+                                bytesRead = header.size;
+                                break;
+                            case TYPE_EMBEDDED_DOCUMENT:
+                                // Проверяем документ и пытаемся добавить его в итератор (при удаче):
+                                if (checkDocument(file, el.documentValue.indexNumber, neededSchema->name, cond) &&
+                                    !addRef(it, el.documentValue)) {
+                                    destroyIterator(it);
+                                    return NULL;
+                                }
+                                resetCondition(cond); // сброс cond.met на случай, если найдётся ещё один элемент с такой же схемой
+                            default:
+                                bytesRead += tmp;
+                        }
                     }
+                    return it;
                 }
             }
         }
     }
-    exit:
     return NULL;
 }

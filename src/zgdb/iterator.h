@@ -2,14 +2,18 @@
 #define _ITERATOR_H_
 
 #include "document_public.h"
-#include "format_public.h"
+#include "iterator_public.h"
 
-typedef struct iterator iterator;
+#include <malloc.h>
+
 struct iterator {
-
+    documentRef* refs; // массив ссылок на документы
+    uint64_t size; // длина массива
+    int64_t curr; // текущий элемент, на котором находится итератор
 };
 
-bool hasNext(iterator* it);
-documentSchema* next(zgdbFile* file, iterator* it);
+iterator* createIterator();
+
+bool addRef(iterator* it, documentRef ref);
 
 #endif
