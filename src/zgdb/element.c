@@ -51,10 +51,6 @@ void destroyElement(element* el) {
             if (el->stringValue.data) {
                 free(el->stringValue.data);
             }
-        } else if (el->type == TYPE_EMBEDDED_DOCUMENT) {
-            if (el->documentValue) {
-                free(el->documentValue);
-            }
         }
         free(el);
     }
@@ -112,8 +108,7 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     return bytesWritten;
 }
 
-uint64_t readElement(zgdbFile* file, element* el) {
-    documentRef* ref; // переменная для ссылки на вложенный документ
+uint64_t readElement(zgdbFile* file, element* el, bool skipStrings) {
     if (fread(&el->type, sizeof(uint8_t), 1, file->f) && fread(&el->key, sizeof(char), 13, file->f) == 13) {
         uint64_t bytesRead = sizeof(uint8_t) + sizeof(char) * 13;
         switch (el->type) {
@@ -127,6 +122,12 @@ uint64_t readElement(zgdbFile* file, element* el) {
                 return fread(&el->booleanValue, sizeof(uint8_t), 1, file->f) ? bytesRead + sizeof(uint8_t) : 0;
             case TYPE_STRING:
                 if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                    // Если нужно пропустить строку (например, при поиске вложенных документов), то не загружаем её:
+                    if (skipStrings) {
+                        fseeko64(file->f, el->stringValue.size, SEEK_CUR);
+                        return bytesRead + sizeof(uint32_t) + el->stringValue.size;
+                    }
+                    // Если пропускать не нужно, то выделяем память:
                     el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
                     if (el->stringValue.data) {
                         if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
@@ -138,34 +139,7 @@ uint64_t readElement(zgdbFile* file, element* el) {
                 }
                 return 0;
             case TYPE_EMBEDDED_DOCUMENT:
-                ref = writeDocument(file, el->schemaValue);
-                if (!ref) {
-                    return 0;
-                }
-
-                uint64_t tmp = ref->indexNumber; // для битового поля
-                bytesRead += fwrite(&tmp, 5, 1, file->f) * 5; // uint64_t : 40 == 5 байт
-                int64_t pos = ftello64(file->f); // сохраняем позицию до записи заголовков вложенного документа
-
-                // Записываем в хедер вложенного документа информацию об этом (создаваемом) документе:
-                zgdbIndex index = getIndex(file, tmp);
-                if (index.flag != INDEX_ALIVE) {
-                    return 0;
-                } else {
-                    /* Спускаемся к хедеру ребёнка и пропускаем размер, номер индекса.
-                     * Считываем parentIndexNumber, если он не равен DOCUMENT_NOT_EXIST, то завершаем выполнение: */
-                    fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
-                    if (!fread(&tmp, 5, 1, file->f) || tmp != DOCUMENT_NOT_EXIST) {
-                        return 0;
-                    }
-                    // Снова спускаемся к хедеру. Записываем parentIndexNumber:
-                    fseeko64(file->f, index.offset + 5 + 5, SEEK_SET);
-                    if (!fwrite(&parentIndexNumber, 5, 1, file->f)) {
-                        return 0;
-                    }
-                }
-                fseeko64(file->f, pos, SEEK_SET); // восстанавливаем позицию
-                break;
+                return fread(&el->documentValue, 5, 1, file->f) ? bytesRead + 5 : 0;
         }
     }
     return 0;
@@ -253,7 +227,7 @@ void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestin
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
                 printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el->key);
-                printEmbeddedDocument(file, el->documentValue->indexNumber, nestingLevel + 1);
+                printEmbeddedDocument(file, el->documentValue.indexNumber, nestingLevel + 1);
                 break;
         }
     } else {
@@ -287,7 +261,7 @@ char* getStringValue(element el) {
 }
 
 documentRef* getDocumentValue(element el) {
-    return el.documentValue;
+    return &el.documentValue;
 }
 
 bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, documentRef* ref) {

@@ -311,14 +311,10 @@ void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel) {
                                 destroyElement(el);
                                 goto exit;
                             case TYPE_EMBEDDED_DOCUMENT:
-                                el->documentValue = malloc(sizeof(documentRef));
-                                if (el->documentValue) {
-                                    if (fread(&tmp, 5, 1, file->f)) {
-                                        el->documentValue->indexNumber = tmp;
-                                        bytesRead += 5;
-                                        break;
-                                    }
-                                    free(el->documentValue);
+                                if (fread(&tmp, 5, 1, file->f)) {
+                                    el->documentValue.indexNumber = tmp;
+                                    bytesRead += 5;
+                                    break;
                                 }
                                 destroyElement(el);
                                 goto exit;
@@ -450,73 +446,31 @@ bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSche
 }
 
 bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
-    bool result;
     zgdbIndex index = getIndex(file, indexNumber);
     if (index.flag == INDEX_ALIVE) {
         fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
         documentHeader header;
+        // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
         if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
             uint64_t bytesRead = sizeof(documentHeader);
             while (bytesRead < header.size) {
                 element el;
-                uint64_t tmp = 0;
-                if (!fread(&el.type, sizeof(uint8_t), 1, file->f) || fread(&el.key, sizeof(char), 13, file->f) != 13) {
-                    goto exit;
+                uint64_t tmp = readElement(file, &el, false);
+                if (!tmp) {
+                    return false;
+                }
+                // Если был достигнут конец документа (пустое место в нём), то выходим из цикла:
+                if (el.type == TYPE_NOT_EXIST) {
+                    bytesRead = header.size;
                 } else {
-                    bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
-                    switch (el.type) {
-                        case TYPE_NOT_EXIST:
-                            // TODO: выход из документа
-                            break;
-                        case TYPE_INT:
-                            if (!fread(&el.integerValue, sizeof(int32_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            break;
-                        case TYPE_DOUBLE:
-                            if (!fread(&el.doubleValue, sizeof(double), 1, file->f)) {
-                                goto exit;
-                            }
-                            break;
-                        case TYPE_BOOLEAN:
-                            if (!fread(&el.booleanValue, sizeof(uint8_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            break;
-                        case TYPE_STRING:
-                            if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                                goto exit;
-                            }
-                            el.stringValue.data = malloc(sizeof(char) * el.stringValue.size);
-                            if (!el.stringValue.data) {
-                                goto exit;
-                            }
-                            if (fread(el.stringValue.data, sizeof(char), el.stringValue.size, file->f) !=
-                                el.stringValue.size) {
-                                free(el.stringValue.data);
-                                goto exit;
-                            }
-                            break;
-                        case TYPE_EMBEDDED_DOCUMENT:
-                            // TODO: подумать о том, как сравнить
-                            el.documentValue = malloc(sizeof(documentRef));
-                            if (el.documentValue) {
-                                if (!fread(&tmp, 5, 1, file->f)) {
-                                    free(el.documentValue);
-                                    goto exit;
-                                }
-                                el.documentValue->indexNumber = tmp;
-                            }
-                            break;
-                    }
+                    bytesRead += tmp;
                     checkCondition(&el, cond);
                 }
             }
             return cond->isMet;
         }
     }
-    exit:
-    return NULL;
+    return false;
 }
 
 documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
@@ -527,49 +481,22 @@ documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchem
             documentHeader header;
             if (fread(&header, sizeof(documentHeader), 1, file->f)) {
                 uint64_t bytesRead = sizeof(documentHeader);
-                element el;
-                uint64_t childIndexNumber = 0;
                 while (bytesRead < header.size) {
-                    if (!fread(&el.type, sizeof(uint8_t), 1, file->f) ||
-                        fread(&el.key, sizeof(char), 13, file->f) != 13) {
-                        goto exit;
-                    } else {
-                        bytesRead += sizeof(uint8_t) + sizeof(char) * 13;
-                        switch (el.type) {
-                            case TYPE_NOT_EXIST:
-                                bytesRead = header.size;
-                                break;
-                            case TYPE_INT:
-                                fseeko64(file->f, sizeof(int32_t), SEEK_CUR);
-                                bytesRead += sizeof(int32_t);
-                                break;
-                            case TYPE_DOUBLE:
-                                fseeko64(file->f, sizeof(double), SEEK_CUR);
-                                bytesRead += sizeof(double);
-                                break;
-                            case TYPE_BOOLEAN:
-                                fseeko64(file->f, sizeof(uint8_t), SEEK_CUR);
-                                bytesRead += sizeof(uint8_t);
-                                break;
-                            case TYPE_STRING:
-                                if (!fread(&el.stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                                    goto exit;
-                                }
-                                fseeko64(file->f, el.stringValue.size, SEEK_CUR);
-                                bytesRead += sizeof(uint32_t) + sizeof(char) * el.stringValue.size;
-                                break;
-                            case TYPE_EMBEDDED_DOCUMENT:
-                                if (!fread(&childIndexNumber, 5, 1, file->f)) {
-                                    goto exit;
-                                }
-                                bytesRead += 5;
-
-                                if (childIndexNumber != DOCUMENT_NOT_EXIST &&
-                                    checkDocument(file, childIndexNumber, neededSchema, cond)) {
-                                    // TODO: добавить documentRef в вывод функции
-                                }
-                                break;
+                    element el;
+                    uint64_t tmp = readElement(file, &el, true);
+                    if (!tmp) {
+                        return false;
+                    }
+                    // Если был достигнут конец документа (пустое место в нём), то выходим из цикла:
+                    if (el.type == TYPE_NOT_EXIST) {
+                        bytesRead = header.size;
+                    } else if (el.type == TYPE_EMBEDDED_DOCUMENT) {
+                        bytesRead += tmp;
+                        if (checkDocument(file, el.documentValue.indexNumber, neededSchema->name, cond)) {
+                            // TODO: тут должно быть добавление в итератор, но пока просто выведем документ:
+                            printDocument(file, &el.documentValue);
                         }
+                        // TODO: reset states of conditions in "cond"
                     }
                 }
             }

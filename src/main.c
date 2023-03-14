@@ -1,8 +1,6 @@
 ﻿#include <stdio.h>
 #include <malloc.h>
-#include "zgdb/document_public.h"
-#include "zgdb/element_public.h"
-#include "zgdb/query.h"
+#include "zgdb/document.h"
 
 int main(int argc, char** argv) {
     zgdbFile* file = loadFile("test");
@@ -52,19 +50,10 @@ int main(int argc, char** argv) {
     printDocument(file, root1);
     printDocument(file, root2);
 
-    //updateDocumentValue(file, "child", grandChildSchema, root2);
-    //printDocument(file, root2);
+    condition* cond = condOr(condEqual(intElement("childInt11", 111)), condLess(intElement("childInt2", 250)));
 
-    /*
-
-    element test = {TYPE_BOOLEAN, "test", 1};
-    element el1 = {TYPE_INT, "int1", 123};
-    element el2 = {TYPE_INT, "int2", 100};
-    condition* cond = condOr(condEqual(&el1), condLess(&el2));
-    printf(checkCondition(&test, cond) ? "true\n" : "false\n");
-
-    */
-
+    printf("RESULT OF FIND:\n");
+    findAllDocuments(file, root2, childSchema, cond);
 
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);

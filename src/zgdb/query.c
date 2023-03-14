@@ -2,6 +2,7 @@
 #include <malloc.h>
 
 #include "query.h"
+#include "element.h"
 
 bool executeQuery(documentRef* parent, documentSchema* neededSchema, condition* cond) {
     // TODO: вызов функции find
@@ -38,7 +39,7 @@ bool checkCondition(element* el, condition* cond) {
     }
 
     // Если у элементов не совпадает тип или ключ, то нет смысла их сравнивать:
-    if (cond->opType < OP_AND && (el->type != cond->el->type || !strcmp(el->key, cond->el->key))) {
+    if (cond->opType < OP_AND && (el->type != cond->el->type || strcmp(el->key, cond->el->key) != 0)) {
         return false;
     }
 

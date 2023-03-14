@@ -26,6 +26,12 @@ typedef struct element element;
 /* Функция для уничтожения элемента. */
 void destroyElement(element* el);
 
+element* intElement(char* key, int32_t value);
+element* doubleElement(char* key, double value);
+element* booleanElement(char* key, bool value);
+element* stringElement(char* key, char* value);
+element* embeddedDocumentElement(char* key, documentSchema* embeddedSchema);
+
 /* Функция для вывода элемента на экран. */
 void printElement(zgdbFile* file, element* el);
 

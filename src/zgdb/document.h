@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "format.h"
+#include "query.h"
 #include "document_public.h"
 #include "element_public.h"
 
@@ -48,5 +49,7 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
 
 /* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
 void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
+
+documentRef* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond);
 
 #endif

@@ -2,6 +2,7 @@
 #define _ELEMENT_H_
 
 #include "element_public.h"
+#include "document.h"
 
 struct str {
     uint32_t size; // размер строки с учётом терминатора
@@ -16,7 +17,7 @@ struct element {
         double doubleValue;
         uint8_t booleanValue;
         str stringValue; // строка
-        documentRef* documentValue; // указатель на документ
+        documentRef documentValue; // указатель на документ
         documentSchema* schemaValue; // указатель на схему; служебный тип
     };
 };
@@ -28,8 +29,9 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber);
 
 /* Функция для чтения элемента из документа.
  * ВНИМАНИЕ: Предполагается, что к моменту вызова функции fseek уже сделан.
+ * Если skipStrings == true, то пропускает (не загружает в память) все строки.
  * Возвращает количество прочитанных байт. */
-uint64_t readElement(zgdbFile* file, element* el);
+uint64_t readElement(zgdbFile* file, element* el, bool skipStrings);
 
 /* Функция для поиска элемента в документе. Устанавливает с помощью fseek смещение на начало элемента.
  * Возвращает тип найденного элемента или TYPE_NOT_EXIST (при ошибке). */
