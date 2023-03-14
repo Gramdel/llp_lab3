@@ -205,38 +205,37 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
     return TYPE_NOT_EXIST;
 }
 
-void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestingLevel) {
+void printElement(zgdbFile* file, element* el) {
+    zgdbIndex index; // index для вложенного документа
     if (el) {
+        printf("\t%s = ", el->key);
         switch (el->type) {
-            case TYPE_NOT_EXIST:
-                printf("%*sElement doesn't exist or there is some unused space in the document!\n", nestingLevel * 2,
-                       "");
-                break;
             case TYPE_INT:
-                printf("%*skey: \"%s\", integerValue: %d\n", nestingLevel * 2, "", el->key, el->integerValue);
+                printf("%d\n", el->integerValue);
                 break;
             case TYPE_DOUBLE:
-                printf("%*skey: \"%s\", doubleValue: %f\n", nestingLevel * 2, "", el->key, el->doubleValue);
+                printf("%f\n", el->doubleValue);
                 break;
             case TYPE_BOOLEAN:
-                printf("%*skey: \"%s\", booleanValue: %s\n", nestingLevel * 2, "", el->key,
-                       el->booleanValue ? "true" : "false");
+                printf("%s\n", el->booleanValue ? "true" : "false");
                 break;
             case TYPE_STRING:
-                printf("%*skey: \"%s\", stringValue: \"%s\"\n", nestingLevel * 2, "", el->key, el->stringValue.data);
+                printf("\"%s\"\n", el->stringValue.data);
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
-                printf("%*skey: \"%s\", documentValue:\n", nestingLevel * 2, "", el->key);
-                printEmbeddedDocument(file, el->documentValue.indexNumber, nestingLevel + 1);
+                index = getIndex(file, el->documentValue.indexNumber);
+                if (index.flag == INDEX_ALIVE) {
+                    fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
+                    documentHeader header;
+                    if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+                        printf("#%08X%016X\n", header.id.timestamp, header.id.offset);
+                    }
+                }
                 break;
         }
     } else {
-        printf("%*sElement doesn't exist!\n", nestingLevel * 2, "");
+        printf("Element doesn't exist!\n");
     }
-}
-
-void printElement(zgdbFile* file, element* el) {
-    printElementOfEmbeddedDocument(file, el, 0);
 }
 
 // TODO: перевести все геттеры на работу с указателями

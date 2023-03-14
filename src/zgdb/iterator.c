@@ -38,10 +38,9 @@ bool hasNext(iterator* it) {
     return it && (it->curr + 1 < it->size);
 }
 
-documentSchema* next(zgdbFile* file, iterator* it) {
+document* next(zgdbFile* file, iterator* it) {
     if (hasNext(it)) {
-        printDocument(file, &it->refs[++it->curr]);
-        //return readDocument(file, it->refs[++it->curr].indexNumber);
+        return readDocument(file, it->refs[++it->curr].indexNumber);
     }
     return NULL;
 }

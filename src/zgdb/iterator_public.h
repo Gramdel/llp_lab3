@@ -7,7 +7,7 @@ typedef struct iterator iterator;
 
 bool hasNext(iterator* it);
 
-documentSchema* next(zgdbFile* file, iterator* it);
+document* next(zgdbFile* file, iterator* it);
 
 void destroyIterator(iterator* it);
 

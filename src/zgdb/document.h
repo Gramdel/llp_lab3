@@ -35,6 +35,11 @@ typedef struct __attribute__((packed)) documentHeader {
     char schemaName[13]; // имя схемы, по которой построен документ
 } documentHeader;
 
+struct document {
+    documentHeader header; // заголовок документа
+    documentSchema* schema; // указатель на схему документа
+};
+
 /* Функция для расчёта размера будущего документа по схеме. */
 uint64_t calcDocumentSize(documentSchema* schema);
 
@@ -43,6 +48,8 @@ uint64_t calcDocumentSize(documentSchema* schema);
  * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
  * Возвращает false при неудаче. */
 bool moveFirstDocuments(zgdbFile* file);
+
+bool addElementToSchema(documentSchema* schema, element el, const char* key);
 
 /* Функция для рекурсивного удаления вложенных документов.
  * Возвращает статус индекса, привязанного к удаляемому документу, или INDEX_NOT_EXIST (при неудаче). */

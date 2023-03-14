@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     if (childSchema) {
         addIntegerToSchema(childSchema, "childInt1", 111);
         addIntegerToSchema(childSchema, "childInt2", 222);
-        addEmbeddedDocumentToSchema(childSchema, "grandChild", grandChildSchema);
+        addEmbeddedDocumentToSchema(childSchema, grandChildSchema);
     }
 
     documentSchema* root2Schema = createSchema(2); // size
@@ -41,20 +41,21 @@ int main(int argc, char** argv) {
         addBooleanToSchema(root2Schema, "isFirst", true);
         addDoubleToSchema(root2Schema, "rootDouble", 128.128);
         addStringToSchema(root2Schema, "rootString", "I AM ROOT");
-        addEmbeddedDocumentToSchema(root2Schema, "child", childSchema);
+        addEmbeddedDocumentToSchema(root2Schema, childSchema);
     }
     //documentRef* root1 = getDocumentByID(file, "63AC2DFE000000000000006C");
     documentRef* root1 = writeDocument(file, root1Schema);
     documentRef* root2 = writeDocument(file, root2Schema);
 
-    printDocument(file, root1);
-    printDocument(file, root2);
+    //printDocument(file, root1);
+    //printDocument(file, root2);
 
     condition* cond = condOr(condEqual(intElement("childInt11", 111)), condLess(intElement("childInt2", 250)));
 
     printf("RESULT OF FIND:\n");
     iterator* it = findAllDocuments(file, root2, childSchema, cond);
-    next(file, it);
+    document* doc = next(file, it);
+    printDocument(file, doc);
 
     destroyDocumentRef(root1);
     destroyDocumentRef(root2);

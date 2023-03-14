@@ -33,7 +33,7 @@ element* stringElement(char* key, char* value);
 element* embeddedDocumentElement(char* key, documentSchema* embeddedSchema);
 
 /* Функция для вывода элемента на экран. */
-void printElement(zgdbFile* file, element* el);
+void printElement(zgdbFile* file, element *el);
 
 /* Функция для получения типа элемента. */
 elementType getTypeOfElement(element el);

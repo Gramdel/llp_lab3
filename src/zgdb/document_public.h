@@ -15,19 +15,22 @@ typedef struct documentRef documentRef;
 /* Структура для схемы данных. */
 typedef struct documentSchema documentSchema;
 
+/* Структура для загруженного в память документа */
+typedef struct document document;
+
 /* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
  * и записывает в них информацию об индексе добавляемого документа (родителя).
  * Возвращает ссылку на документ или NULL (при неудаче). */
 documentRef* writeDocument(zgdbFile* file, documentSchema* schema);
 
-documentSchema* readDocument(zgdbFile* file, uint64_t indexNumber);
+document* readDocument(zgdbFile* file, uint64_t indexNumber);
 
 /* Функция для удаления документа из файла. Вне зависимости от результата, делает ссылку на документ недоступной.
  * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, documentRef* ref);
 
 /* Функция для вывода документа. */
-void printDocument(zgdbFile* file, documentRef* ref);
+void printDocument(zgdbFile* file, document* doc);
 
 /* Функция для получения ссылки на документ с определённым ID. Принимает ID в виде строки из 24 символов.
  * ВНИМАНИЕ: Если ID получен не после вывода, а напрямую (через HEX редактор), то нужно его сначала перевести в Big Endian.
@@ -39,7 +42,7 @@ void destroyDocumentRef(documentRef* ref);
 
 /* Функция для создания схемы с изначальной вместимостью, равной аргументу.
  * Возвращает NULL при неудаче. */
-documentSchema* createSchema(uint64_t capacity);
+documentSchema* createSchema(uint64_t capacity, const char* name);
 
 /* Функция для уничтожения схемы. */
 void destroySchema(documentSchema* schema);
@@ -61,6 +64,6 @@ bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value);
 bool addStringToSchema(documentSchema* schema, char* key, char* value);
 
 /* Функция для добавления в схему элемента типа TYPE_EMBEDDED_DOCUMENT с определённой схемой. */
-bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSchema* embeddedSchema);
+bool addEmbeddedDocumentToSchema(documentSchema* schema, documentSchema* embeddedSchema);
 
 #endif
