@@ -150,9 +150,8 @@ bool checkCondition(element* el, condition* cond) {
 
 void resetCondition(condition* cond) {
     if (cond) {
-        if (cond->opType < OP_AND) {
-            cond->isMet = false;
-        } else {
+        cond->isMet = false;
+        if (cond->opType >= OP_AND) {
             resetCondition(cond->cond1);
             resetCondition(cond->cond2);
         }

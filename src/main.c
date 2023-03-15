@@ -38,7 +38,6 @@ int main(int argc, char** argv) {
         addEmbeddedDocumentToSchema(root2Schema, "child", childSchema);
     }
 
-    //documentRef* root2 = writeDocument(file, root2Schema);
     createRoot(file, root2Schema);
 
     condition* cond = condOr(condEqual(intElement("childInt1", 111)), condEqual(intElement("grChildInt2", 456)));
