@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "query_public.h"
+#include "iterator_public.h"
 
 /* Типы операций. Логические операции применимы ТОЛЬКО к условиям (чтобы делать, например, нечто вроде !cond1 || cond2) */
 typedef enum operationType {
@@ -33,13 +34,20 @@ struct condition {
 };
 
 struct query {
-    bool isMutation;
+    query** nestedQueries;
+    uint64_t length;
+    char schemaName[13];
     condition* cond;
-    element* newElement;
 };
 
 bool checkCondition(element* el, condition* cond);
 
 void resetCondition(condition* cond);
+
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond);
+
+iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q);
+
+void destroyQuery(query* q);
 
 #endif

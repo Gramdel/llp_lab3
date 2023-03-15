@@ -95,7 +95,8 @@ zgdbFile* createFile(const char* filename) {
     if (file) {
         file->f = fopen(filename, "w+b");
         file->header = (zgdbHeader) { ZGDB_FILETYPE,
-                                      sizeof(zgdbHeader) + sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY, 0, 0 };
+                                      sizeof(zgdbHeader) + sizeof(zgdbIndex) * ZGDB_DEFAULT_INDEX_CAPACITY, 0, 0,
+                                      DOCUMENT_NOT_EXIST };
         file->list = (sortedList) { NULL, NULL };
         // ВНИМАНИЕ: заголовок записывается после индексов, поскольку writeNewIndexes изменяет indexCount в заголовке.
         if (file->f && writeNewIndexes(file, ZGDB_DEFAULT_INDEX_CAPACITY) && writeHeader(file)) {

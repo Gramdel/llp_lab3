@@ -3,20 +3,20 @@
 #include <string.h>
 
 #include "document.h"
+#include "schema.h"
 #include "element.h"
-#include "query.h"
-#include "iterator.h"
 
 document* createDocument() {
     document* doc = malloc(sizeof(document));
     if (doc) {
-        doc->schema = createSchema(0);
-        if (!doc->schema) {
-            free(doc);
-            return NULL;
+        doc->schema = malloc(sizeof(documentSchema));
+        if (doc->schema) {
+            *doc->schema = (documentSchema) { 0 };
+            return doc;
         }
+        free(doc);
     }
-    return doc;
+    return NULL;
 }
 
 void destroyDocument(document* doc) {
@@ -28,6 +28,17 @@ void destroyDocument(document* doc) {
     }
 }
 
+bool createRoot(zgdbFile* file, documentSchema* schema) {
+    if (file->header.indexOfRoot == DOCUMENT_NOT_EXIST) {
+        documentRef* root = writeDocument(file, schema);
+        if (root) {
+            file->header.indexOfRoot = root->indexNumber;
+            free(root);
+            return writeHeader(file);
+        }
+    }
+    return false;
+}
 
 bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
@@ -113,33 +124,6 @@ bool moveFirstDocuments(zgdbFile* file) {
         return false;
     }
     return true;
-}
-
-uint64_t calcDocumentSize(documentSchema* schema) {
-    uint64_t size = sizeof(documentHeader);
-    for (uint64_t i = 0; i < schema->elementCount; i++) {
-        size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
-        element el = schema->elements[i];
-        switch (el.type) {
-            case TYPE_INT:
-                size += sizeof(int32_t);
-                break;
-            case TYPE_DOUBLE:
-                size += sizeof(double);
-                break;
-            case TYPE_BOOLEAN:
-                size += sizeof(uint8_t);
-                break;
-            case TYPE_STRING:
-                size += sizeof(uint32_t); // размер строки
-                size += sizeof(char) * el.stringValue.size; // сама строка
-                break;
-            case TYPE_EMBEDDED_DOCUMENT:
-                size += 5; // uint64_t : 40 == 5 байт
-                break;
-        }
-    }
-    return size;
 }
 
 documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
@@ -310,192 +294,15 @@ void printDocument(zgdbFile* file, document* doc) {
     if (doc) {
         printf("%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp, doc->header.id.offset);
         for (uint64_t i = 0; i < doc->schema->elementCount; i++) {
+            printf("\t");
             printElement(file, &doc->schema->elements[i]);
         }
         printf("}\n");
     }
 }
 
-documentRef* getDocumentByID(zgdbFile* file, char* idAsString) {
-    if (idAsString && strlen(idAsString) == 24) {
-        // Разбиваем нашу idAsString на две hex-строки:
-        char timestampAsString[8];
-        char* offsetAsString = idAsString + 8;
-        strncpy(timestampAsString, idAsString, 8);
-        // Парсим:
-        documentId id;
-        id.timestamp = strtol(timestampAsString, NULL, 16);
-        id.offset = strtol(offsetAsString, NULL, 16);
-        for (uint64_t i = 0; i < file->header.indexCount; i++) {
-            zgdbIndex index = getIndex(file, i);
-            if (index.flag == INDEX_ALIVE) {
-                documentHeader header;
-                fseeko64(file->f, index.offset, SEEK_SET);
-                if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
-                    break;
-                }
-                if (id.timestamp == header.id.timestamp && id.offset == header.id.offset) {
-                    documentRef* ref = malloc(sizeof(documentRef));
-                    if (ref) {
-                        ref->indexNumber = i;
-                    }
-                    return ref;
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
 void destroyDocumentRef(documentRef* ref) {
     if (ref) {
         free(ref);
     }
-}
-
-// TODO: Вернуть к предыдущему виду, а в readDocument создавать схему вручную со всеми нулями (без capacity)
-documentSchema* createSchema(uint64_t capacity, const char* name) {
-    if (!name || strlen(name) > 12) {
-        return NULL;
-    }
-    documentSchema* schema = malloc(sizeof(documentSchema));
-    if (!schema) {
-        return NULL;
-    }
-    schema->elements = NULL;
-    schema->elementCount = 0;
-    schema->capacity = 0;
-    strcpy(schema->name, name);
-    if (capacity) {
-        schema->elements = malloc(sizeof(element) * capacity);
-        if (!schema->elements) {
-            free(schema);
-            return NULL;
-        }
-        schema->capacity = capacity;
-    }
-    return schema;
-}
-
-void destroySchema(documentSchema* schema) {
-    if (schema) {
-        if (schema->elements) {
-            free(schema->elements);
-        }
-        free(schema);
-    }
-}
-
-bool addElementToSchema(documentSchema* schema, element el, const char* key) {
-    if (!schema || !key || strlen(key) > 12) {
-        return false;
-    }
-    if (schema->elementCount == schema->capacity) {
-        element* tmp = realloc(schema->elements, sizeof(element) * (++schema->capacity));
-        if (!tmp) {
-            destroySchema(schema);
-            return false;
-        }
-        schema->elements = tmp;
-    }
-    memset(el.key, 0, 13);
-    strncpy(el.key, key, 13);
-    schema->elements[schema->elementCount++] = el;
-    return true;
-}
-
-bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
-}
-
-bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
-}
-
-bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
-}
-
-bool addStringToSchema(documentSchema* schema, char* key, char* value) {
-    return !value ? false : addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = (str) {
-            strlen(value) + 1, value }}, key);
-}
-
-bool addEmbeddedDocumentToSchema(documentSchema* schema, documentSchema* embeddedSchema) {
-    if (embeddedSchema && schema != embeddedSchema) {
-        strncpy(embeddedSchema->name, schema->name, 13);
-        return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .schemaValue = embeddedSchema },
-                                  schema->name);
-    }
-    return false;
-}
-
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
-    zgdbIndex index = getIndex(file, indexNumber);
-    if (index.flag == INDEX_ALIVE) {
-        fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
-        documentHeader header;
-        // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
-        if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
-            uint64_t bytesRead = sizeof(documentHeader);
-            while (bytesRead < header.size) {
-                element el;
-                uint64_t tmp = readElement(file, &el, false);
-                if (!tmp) {
-                    return false;
-                }
-                // Если был достигнут конец документа (пустое место в нём), то выходим из цикла:
-                if (el.type == TYPE_NOT_EXIST) {
-                    bytesRead = header.size;
-                } else {
-                    bytesRead += tmp;
-                    checkCondition(&el, cond);
-                }
-            }
-            return cond->isMet;
-        }
-    }
-    return false;
-}
-
-iterator* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond) {
-    if (parent && parent->indexNumber != DOCUMENT_NOT_EXIST) {
-        zgdbIndex index = getIndex(file, parent->indexNumber);
-        if (index.flag == INDEX_ALIVE) {
-            fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
-            documentHeader header;
-            if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-                iterator* it = createIterator();
-                if (it) {
-                    uint64_t bytesRead = sizeof(documentHeader);
-                    while (bytesRead < header.size) {
-                        element el;
-                        uint64_t tmp = readElement(file, &el, true);
-                        if (!tmp) {
-                            destroyIterator(it);
-                            return NULL;
-                        }
-                        switch (el.type) {
-                            case TYPE_NOT_EXIST:
-                                bytesRead = header.size;
-                                break;
-                            case TYPE_EMBEDDED_DOCUMENT:
-                                // Проверяем документ и пытаемся добавить его в итератор (при удаче):
-                                if (checkDocument(file, el.documentValue.indexNumber, neededSchema->name, cond) &&
-                                    !addRef(it, el.documentValue)) {
-                                    destroyIterator(it);
-                                    return NULL;
-                                }
-                                resetCondition(
-                                        cond); // сброс cond.met на случай, если найдётся ещё один элемент с такой же схемой
-                            default:
-                                bytesRead += tmp;
-                        }
-                    }
-                    return it;
-                }
-            }
-        }
-    }
-    return NULL;
 }

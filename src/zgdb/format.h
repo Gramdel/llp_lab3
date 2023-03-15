@@ -19,6 +19,7 @@ typedef struct __attribute__((packed)) zgdbHeader {
     int64_t fileSize; // размер файла
     uint8_t firstDocumentOffset; // смещение первого документа относительно конца индексов; остаток от деления на 9, поэтому не больше 8
     uint64_t indexCount : 40; // (5 байт) количество всех индексов файла
+    uint64_t indexOfRoot : 40;
 } zgdbHeader;
 
 struct zgdbFile {

@@ -19,13 +19,6 @@ struct documentRef {
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
 };
 
-struct documentSchema {
-    element* elements; // указатель на массив элементов
-    uint64_t elementCount; // текущее количество элементов в массиве
-    uint64_t capacity; // размер массива (максимальное число элементов, которое он может вместить без реаллокаций)
-    char name[13];
-};
-
 /* Структура для заголовка документа. */
 typedef struct __attribute__((packed)) documentHeader {
     uint64_t size : 40; // (5 байт) размер документа в байтах
@@ -40,8 +33,8 @@ struct document {
     documentSchema* schema; // указатель на схему документа
 };
 
-/* Функция для расчёта размера будущего документа по схеме. */
-uint64_t calcDocumentSize(documentSchema* schema);
+document* createDocument();
+void destroyDocument(document* doc);
 
 /* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
  * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
@@ -57,7 +50,5 @@ indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint
 
 /* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
 void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
-
-iterator* findAllDocuments(zgdbFile* file, documentRef* parent, documentSchema* neededSchema, condition* cond);
 
 #endif

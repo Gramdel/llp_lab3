@@ -208,7 +208,7 @@ elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
 void printElement(zgdbFile* file, element* el) {
     zgdbIndex index; // index для вложенного документа
     if (el) {
-        printf("\t%s = ", el->key);
+        printf("%s = ", el->key);
         switch (el->type) {
             case TYPE_INT:
                 printf("%d\n", el->integerValue);
@@ -223,13 +223,19 @@ void printElement(zgdbFile* file, element* el) {
                 printf("\"%s\"\n", el->stringValue.data);
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
-                index = getIndex(file, el->documentValue.indexNumber);
-                if (index.flag == INDEX_ALIVE) {
-                    fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
-                    documentHeader header;
-                    if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-                        printf("#%08X%016X\n", header.id.timestamp, header.id.offset);
+                if (el->documentValue.indexNumber == DOCUMENT_NOT_EXIST) {
+                    printf("null\n");
+                } else {
+                    index = getIndex(file, el->documentValue.indexNumber);
+                    if (index.flag == INDEX_ALIVE) {
+                        fseeko64(file->f, index.offset, SEEK_SET); // спуск в родительский документ по смещению
+                        documentHeader header;
+                        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+                            printf("%s#%08X%016X\n", header.schemaName, header.id.timestamp, header.id.offset);
+                            return;
+                        }
                     }
+                    printf("ERROR\n");
                 }
                 break;
         }
