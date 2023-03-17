@@ -75,22 +75,20 @@ void destroyQuery(query* q) {
 }
 
 bool checkRoot(zgdbFile* file, const char* schemaName) {
-    if (file->header.indexOfRoot != DOCUMENT_NOT_EXIST) {
-        zgdbIndex index = getIndex(file, file->header.indexOfRoot);
-        if (index.flag == INDEX_ALIVE) {
-            documentHeader header;
-            fseeko64(file->f, index.offset, SEEK_SET); // спуск в корень по смещению
-            // Читаем заголовок корня и проверяем, соответствует ли имя корня в запросе его истинному имени:
-            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
-                return true;
-            }
+    zgdbIndex index = getIndex(file, file->header.indexOfRoot);
+    if (index.flag == INDEX_ALIVE) {
+        documentHeader header;
+        fseeko64(file->f, index.offset, SEEK_SET); // спуск в корень по смещению
+        // Читаем заголовок корня и проверяем, соответствует ли имя корня в запросе его истинному имени:
+        if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
+            return true;
         }
     }
     return false;
 }
 
-bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber, bool (* mutate)(zgdbFile*, uint64_t, documentSchema*),
-                        iterator* it) {
+bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber,
+                        bool (* mutate)(zgdbFile*, uint64_t, documentSchema*), iterator* it) {
     bool match = checkDocument(file, indexNumber, q->schemaName, q->cond);
     resetCondition(q->cond); // сброс cond.met
     if (match) {
@@ -115,10 +113,15 @@ bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber, bool (* 
 }
 
 iterator* executeSelect(zgdbFile* file, query* q) {
-    if (q && checkRoot(file, q->schemaName) && !q->isUpdating) {
+    if (file->header.indexOfRoot != DOCUMENT_NOT_EXIST) {
         iterator* it = createIterator();
         if (it) {
-            if (executeNestedQuery(file, q, file->header.indexOfRoot, NULL, it)) {
+            if (q) {
+                if (checkRoot(file, q->schemaName) && !q->isUpdating &&
+                    executeNestedQuery(file, q, file->header.indexOfRoot, NULL, it)) {
+                    return it;
+                }
+            } else if (addRef(it, (documentRef) { file->header.indexOfRoot })) {
                 return it;
             }
             destroyIterator(it);
@@ -128,7 +131,7 @@ iterator* executeSelect(zgdbFile* file, query* q) {
 }
 
 iterator* executeDelete(zgdbFile* file, query* q) {
-    if (q && checkRoot(file, q->schemaName) && !q->isUpdating) {
+    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schemaName) && !q->isUpdating) {
         iterator* it = createIterator();
         if (it) {
             if (executeNestedQuery(file, q, file->header.indexOfRoot, &remDocument, it)) {
@@ -141,7 +144,7 @@ iterator* executeDelete(zgdbFile* file, query* q) {
 }
 
 iterator* executeUpdate(zgdbFile* file, query* q) {
-    if (q && checkRoot(file, q->schemaName) && q->isUpdating) {
+    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schemaName) && q->isUpdating) {
         iterator* it = createIterator();
         if (it) {
             if (executeNestedQuery(file, q, file->header.indexOfRoot, &updateDocument, it)) {

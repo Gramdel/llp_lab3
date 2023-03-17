@@ -307,8 +307,42 @@ void printDocument(zgdbFile* file, document* doc) {
 }
 
 bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
-    printf("UPD: %d\n", indexNumber);
-    return true;
+    // Если обновлять документ не надо (newValues == null), то возвращаем true:
+    printf("%d\n", indexNumber);
+    if (!newValues) {
+        return true;
+    }
+    zgdbIndex index = getIndex(file, indexNumber);
+    if (index.flag == INDEX_ALIVE) {
+        fseeko64(file->f, index.offset, SEEK_SET);
+        documentHeader header;
+        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+            uint64_t bytesRead = sizeof(documentHeader);
+            while (bytesRead < header.size) {
+                element el;
+                uint64_t tmp = readElement(file, &el, false);
+                if (!tmp) {
+                    return false;
+                }
+                // Если элемент не существует, то выходим из цикла. Иначе - обновляем элемент:
+                if (el.type == TYPE_NOT_EXIST) {
+                    bytesRead = header.size;
+                } else {
+                    bytesRead += tmp;
+                    element* newElement = getElementFromSchema(newValues, el.key);
+                    if (newElement) {
+                        fseeko64(file->f, (int64_t) -tmp, SEEK_CUR);
+                        if (!updateElement(file, newElement, indexNumber)) {
+                            return false;
+                        }
+                        // TODO: обернуть в отдельную функцию update, потому что тут полная жесть будет со строкой
+                    }
+                }
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
@@ -321,13 +355,6 @@ void destroyDocumentRef(documentRef* ref) {
     }
 }
 
-element* getElementByKey(document* doc, const char* key) {
-    if (doc && key && strlen(key) <= 12) {
-        for (uint64_t i = 0; i < doc->schema->length; i++) {
-            if (!strcmp(doc->schema->elements[i]->key, key)) {
-                return doc->schema->elements[i];
-            }
-        }
-    }
-    return NULL;
+element* getElementFromDocument(document* doc, const char* key) {
+    return doc ? getElementFromSchema(doc->schema, key) : NULL;
 }

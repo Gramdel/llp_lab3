@@ -38,6 +38,6 @@ void destroyDocumentRef(documentRef* ref);
 
 bool createRoot(zgdbFile* file, documentSchema* schema);
 
-element* getElementByKey(document* doc, const char* key);
+element* getElementFromDocument(document* doc, const char* key);
 
 #endif

@@ -56,6 +56,7 @@ void destroyElement(element* el) {
     }
 }
 
+// TODO: посмотреть, что там с parentIndexNumber
 uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
     documentRef* ref; // переменная для ссылки на вложенный документ
     uint64_t bytesWritten = 0;
@@ -143,6 +144,18 @@ uint64_t readElement(zgdbFile* file, element* el, bool skipStrings) {
         }
     }
     return 0;
+}
+
+bool updateElement(zgdbFile* file, element* newElement, uint64_t parentIndexNumber) {
+    if (newElement->type == TYPE_STRING) {
+        return true;
+    } else if (newElement->type == TYPE_EMBEDDED_DOCUMENT) {
+        return true;
+    } else {
+        bool result = writeElement(file, newElement, parentIndexNumber);
+        fseeko64(file->f, 0, SEEK_CUR); // этот вызов нужен для того, чтобы потом можно было сделать fread.
+        return result;
+    }
 }
 
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i) {
@@ -243,6 +256,7 @@ void printElement(zgdbFile* file, element* el) {
         printf("Element doesn't exist!\n");
     }
 }
+
 
 // TODO: перевести все геттеры на работу с указателями
 elementType getTypeOfElement(element el) {

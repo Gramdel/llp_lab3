@@ -16,4 +16,7 @@ uint64_t calcDocumentSize(documentSchema* schema);
 // TODO: описание
 bool addElementToSchema(documentSchema* schema, element *el);
 
+// TODO: описание
+element* getElementFromSchema(documentSchema* schema, const char* key);
+
 #endif

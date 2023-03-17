@@ -18,6 +18,10 @@ int main(int argc, char** argv) {
                                                     intElement("grChildInt2", 456),
                                                     intElement("grChildInt3", 789));
 
+    documentSchema* newGrandChildSchema = createSchema("grandChild", 2,
+                                                    intElement("grChildInt1", 505),
+                                                    intElement("grChildInt3", 987));
+
     documentSchema* childSchema = createSchema("child", 3,
                                                intElement("childInt1", 111),
                                                intElement("childInt2", 222),
@@ -39,10 +43,10 @@ int main(int argc, char** argv) {
                                                 selectOrDeleteQuery("child", cond, 1,
                                                        selectOrDeleteQuery("grandChild", cond, 0)),
                                                 selectOrDeleteQuery("child", cond, 0));
-    query* update = updateQuery("root", NULL, rootSchema,2,
+    query* update = updateQuery("root", NULL, NULL,2,
                                 updateQuery("child", cond, NULL, 1,
-                                            updateQuery("grandChild", cond, rootSchema, 0)),
-                                updateQuery("child", cond, rootSchema, 0));
+                                            updateQuery("grandChild", cond, newGrandChildSchema, 0)),
+                                updateQuery("child", cond, childSchema, 0));
     printf("RESULT OF FIND:\n");
     iterator* it = executeSelect(file, selectOrDelete);
     while (hasNext(it)) {
@@ -51,12 +55,14 @@ int main(int argc, char** argv) {
         destroyDocument(doc);
     }
 
+
     iterator* it2 = executeUpdate(file, update);
     while (hasNext(it2)) {
         document* doc = next(file, it2);
         printDocument(file, doc);
         destroyDocument(doc);
     }
+
 
     /*
     iterator* it3 = executeDelete(file, selectOrDelete);

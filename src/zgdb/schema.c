@@ -54,6 +54,17 @@ bool addElementToSchema(documentSchema* schema, element* el) {
     return false;
 }
 
+element* getElementFromSchema(documentSchema* schema, const char* key) {
+    if (schema && key && strlen(key) <= 12) {
+        for (uint64_t i = 0; i < schema->length; i++) {
+            if (!strcmp(schema->elements[i]->key, key)) {
+                return schema->elements[i];
+            }
+        }
+    }
+    return NULL;
+}
+
 uint64_t calcDocumentSize(documentSchema* schema) {
     uint64_t size = sizeof(documentHeader);
     for (uint64_t i = 0; i < schema->length; i++) {
