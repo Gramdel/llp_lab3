@@ -134,6 +134,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     documentHeader header;
     header.size = calcDocumentSize(schema);
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
+    memset(header.schemaName, 0, 13);
     strcpy(header.schemaName, schema->name);
 
     // Сразу выделяем индексы, если список пустой:
