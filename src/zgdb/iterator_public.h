@@ -2,6 +2,7 @@
 #define _ITERATOR_PUBLIC_H_
 
 #include "format_public.h"
+#include "document_public.h"
 
 typedef struct iterator iterator;
 

@@ -33,7 +33,10 @@ struct document {
     documentSchema* schema; // указатель на схему документа
 };
 
+// TODO: описание
 document* createDocument();
+
+// TODO: описание
 void destroyDocument(document* doc);
 
 /* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
@@ -42,13 +45,17 @@ void destroyDocument(document* doc);
  * Возвращает false при неудаче. */
 bool moveFirstDocuments(zgdbFile* file);
 
-bool addElementToSchema(documentSchema* schema, element el, const char* key);
-
 /* Функция для рекурсивного удаления вложенных документов.
  * Возвращает статус индекса, привязанного к удаляемому документу, или INDEX_NOT_EXIST (при неудаче). */
 indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber);
 
 /* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
 void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
+
+// TODO: описание
+bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues);
+
+// TODO: описание
+bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues);
 
 #endif

@@ -1,19 +1,29 @@
 #include <malloc.h>
 #include <string.h>
+#include <stdarg.h>
 
 #include "schema.h"
 #include "element.h"
 
-documentSchema* createSchema(const char* name, uint64_t capacity) {
-    if (name && strlen(name) <= 12) {
+documentSchema* createSchema(const char* name, uint64_t length, ...) {
+    if (name && strlen(name) <= 12 && length) {
         documentSchema* schema = malloc(sizeof(documentSchema));
         if (schema) {
-            schema->elementCount = 0;
-            schema->capacity = capacity;
-            schema->elements = malloc(sizeof(element) * capacity);
+            schema->length = length;
+            schema->elements = malloc(sizeof(element) * length);
             strcpy(schema->name, name);
-            // Если capacity == 0 или получилось выделить место, то всё хорошо:
-            if (!capacity || schema->elements) {
+            if (schema->elements) {
+                va_list arg;
+                va_start(arg, length);
+                for (uint64_t i = 0; i < length; i++) {
+                    schema->elements[i] = va_arg(arg, element*);
+                    if (!schema->elements[i]) {
+                        va_end(arg);
+                        destroySchema(schema);
+                        return NULL;
+                    }
+                }
+                va_end(arg);
                 return schema;
             }
             free(schema);
@@ -25,18 +35,31 @@ documentSchema* createSchema(const char* name, uint64_t capacity) {
 void destroySchema(documentSchema* schema) {
     if (schema) {
         if (schema->elements) {
+            for (uint64_t i = 0; i < schema->length; i++) {
+                destroyElement(schema->elements[i]);
+            }
             free(schema->elements);
         }
         free(schema);
     }
 }
 
+bool addElementToSchema(documentSchema* schema, element* el) {
+    element** tmp = realloc(schema->elements, sizeof(element*) * (schema->length + 1));
+    if (tmp) {
+        schema->elements = tmp;
+        schema->elements[schema->length++] = el;
+        return true;
+    }
+    return false;
+}
+
 uint64_t calcDocumentSize(documentSchema* schema) {
     uint64_t size = sizeof(documentHeader);
-    for (uint64_t i = 0; i < schema->elementCount; i++) {
+    for (uint64_t i = 0; i < schema->length; i++) {
         size += sizeof(uint8_t) + 13 * sizeof(char); // type и key
-        element el = schema->elements[i];
-        switch (el.type) {
+        element* el = schema->elements[i];
+        switch (el->type) {
             case TYPE_INT:
                 size += sizeof(int32_t);
                 break;
@@ -48,7 +71,7 @@ uint64_t calcDocumentSize(documentSchema* schema) {
                 break;
             case TYPE_STRING:
                 size += sizeof(uint32_t); // размер строки
-                size += sizeof(char) * el.stringValue.size; // сама строка
+                size += sizeof(char) * el->stringValue.size; // сама строка
                 break;
             case TYPE_EMBEDDED_DOCUMENT:
                 size += 5; // uint64_t : 40 == 5 байт
@@ -56,47 +79,4 @@ uint64_t calcDocumentSize(documentSchema* schema) {
         }
     }
     return size;
-}
-
-bool addElementToSchema(documentSchema* schema, element el, const char* key) {
-    if (!schema || !key || strlen(key) > 12) {
-        return false;
-    }
-    if (schema->elementCount == schema->capacity) {
-        element* tmp = realloc(schema->elements, sizeof(element) * (++schema->capacity));
-        if (!tmp) {
-            destroySchema(schema);
-            return false;
-        }
-        schema->elements = tmp;
-    }
-    memset(el.key, 0, 13);
-    strcpy(el.key, key);
-    schema->elements[schema->elementCount++] = el;
-    return true;
-}
-
-bool addIntegerToSchema(documentSchema* schema, char* key, int32_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_INT, .integerValue = value }, key);
-}
-
-bool addDoubleToSchema(documentSchema* schema, char* key, double value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_DOUBLE, .doubleValue = value }, key);
-}
-
-bool addBooleanToSchema(documentSchema* schema, char* key, uint8_t value) {
-    return addElementToSchema(schema, (element) { .type = TYPE_BOOLEAN, .booleanValue = value }, key);
-}
-
-bool addStringToSchema(documentSchema* schema, char* key, char* value) {
-    return !value ? false : addElementToSchema(schema, (element) { .type = TYPE_STRING, .stringValue = (str) {
-            strlen(value) + 1, value }}, key);
-}
-
-bool addEmbeddedDocumentToSchema(documentSchema* schema, char* key, documentSchema* embeddedSchema) {
-    if (embeddedSchema && schema != embeddedSchema) {
-        return addElementToSchema(schema, (element) { .type = TYPE_EMBEDDED_DOCUMENT, .schemaValue = embeddedSchema },
-                                  key);
-    }
-    return false;
 }

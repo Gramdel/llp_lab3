@@ -14,7 +14,7 @@ struct iterator {
 
 iterator* createIterator();
 
-bool addRef(iterator* it, documentRef ref);
+bool addRef(iterator* dest, documentRef ref);
 
 bool addAllRefs(iterator* dest, iterator* src);
 

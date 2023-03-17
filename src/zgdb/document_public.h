@@ -10,6 +10,7 @@
 
 #include "format_public.h"
 #include "schema_public.h"
+#include "element_public.h"
 
 /* Структура для "ссылки" на документ.
  * Фактически, обёртка для номера индекса документа в файле.*/
@@ -36,5 +37,7 @@ void printDocument(zgdbFile* file, document* doc);
 void destroyDocumentRef(documentRef* ref);
 
 bool createRoot(zgdbFile* file, documentSchema* schema);
+
+element* getElementByKey(document* doc, const char* key);
 
 #endif

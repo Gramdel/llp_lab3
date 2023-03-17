@@ -23,12 +23,12 @@ void destroyIterator(iterator* it) {
     }
 }
 
-bool addRef(iterator* it, documentRef ref) {
-    if (it) {
-        documentRef* tmp = realloc(it->refs, sizeof(documentRef) * (it->length + 1));
+bool addRef(iterator* dest, documentRef ref) {
+    if (dest) {
+        documentRef* tmp = realloc(dest->refs, sizeof(documentRef) * (dest->length + 1));
         if (tmp) {
-            it->refs = tmp;
-            it->refs[it->length++] = ref;
+            dest->refs = tmp;
+            dest->refs[dest->length++] = ref;
             return true;
         }
     }
@@ -36,8 +36,8 @@ bool addRef(iterator* it, documentRef ref) {
 }
 
 bool addAllRefs(iterator* dest, iterator* src) {
-    if (dest) {
-        if (!src || !src->length) {
+    if (dest && src) {
+        if (!src->length) {
             return true;
         }
         documentRef* tmp = realloc(dest->refs, sizeof(documentRef) * (dest->length + src->length));

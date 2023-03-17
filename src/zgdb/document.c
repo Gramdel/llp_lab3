@@ -184,8 +184,8 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     // Пропускаем заголовок и записываем сначала основную часть документа:
     uint64_t bytesLeft = header.size;
     fseeko64(file->f, header.id.offset + (int64_t) sizeof(documentHeader), SEEK_SET);
-    for (uint64_t i = 0; i < schema->elementCount; i++) {
-        bytesLeft -= writeElement(file, schema->elements + i, header.indexNumber);
+    for (uint64_t i = 0; i < schema->length; i++) {
+        bytesLeft -= writeElement(file, schema->elements[i], header.indexNumber);
     }
     // Обновляем размер документа (если надо) и записываем время создания документа в заголовок:
     if (newSize) {
@@ -217,18 +217,22 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
                 doc->header = header;
                 uint64_t bytesRead = sizeof(documentHeader);
                 while (bytesRead < header.size) {
-                    element el;
-                    uint64_t tmp = readElement(file, &el, false);
+                    element* el = malloc(sizeof(element));
+                    if (!el) {
+                        destroyDocument(doc);
+                        return NULL;
+                    }
+                    uint64_t tmp = readElement(file, el, false);
                     if (!tmp) {
                         destroyDocument(doc);
                         return NULL;
                     }
                     // Если элемент не существует, то выходим из цикла. Иначе - пробуем добавить элемент в схему:
-                    if (el.type == TYPE_NOT_EXIST) {
+                    if (el->type == TYPE_NOT_EXIST) {
                         bytesRead = header.size;
                     } else {
                         bytesRead += tmp;
-                        if (!addElementToSchema(doc->schema, el, el.key)) {
+                        if (!addElementToSchema(doc->schema, el)) {
                             destroyDocument(doc);
                             return NULL;
                         }
@@ -293,16 +297,36 @@ bool removeDocument(zgdbFile* file, documentRef* ref) {
 void printDocument(zgdbFile* file, document* doc) {
     if (doc) {
         printf("%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp, doc->header.id.offset);
-        for (uint64_t i = 0; i < doc->schema->elementCount; i++) {
+        for (uint64_t i = 0; i < doc->schema->length; i++) {
             printf("\t");
-            printElement(file, &doc->schema->elements[i]);
+            printElement(file, doc->schema->elements[i]);
         }
         printf("}\n");
     }
+}
+
+bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
+    printf("UPD: %d\n", indexNumber);
+    return true;
+}
+
+bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
+    return true;
 }
 
 void destroyDocumentRef(documentRef* ref) {
     if (ref) {
         free(ref);
     }
+}
+
+element* getElementByKey(document* doc, const char* key) {
+    if (doc && key && strlen(key) <= 12) {
+        for (uint64_t i = 0; i < doc->schema->length; i++) {
+            if (!strcmp(doc->schema->elements[i]->key, key)) {
+                return doc->schema->elements[i];
+            }
+        }
+    }
+    return NULL;
 }

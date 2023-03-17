@@ -5,13 +5,15 @@
 #include "element_public.h"
 
 struct documentSchema {
-    element* elements; // указатель на массив элементов
-    uint64_t elementCount; // текущее количество элементов в массиве
-    uint64_t capacity; // размер массива (максимальное число элементов, которое он может вместить без реаллокаций)
-    char name[13];
+    element** elements; // указатель на массив указателей на элементы
+    uint64_t length; // длина массива
+    char name[13]; // имя схемы
 };
 
 /* Функция для расчёта размера будущего документа по схеме. */
 uint64_t calcDocumentSize(documentSchema* schema);
+
+// TODO: описание
+bool addElementToSchema(documentSchema* schema, element *el);
 
 #endif
