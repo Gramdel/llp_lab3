@@ -27,6 +27,10 @@ int main(int argc, char** argv) {
                                                intElement("childInt2", 222),
                                                embeddedDocumentElement("grandChild", grandChildSchema));
 
+    documentSchema* newChildSchema = createSchema("child", 3,
+                                               intElement("childInt1", 121),
+                                               intElement("childInt2", 212));
+
     documentSchema* rootSchema = createSchema("root", 7,
                                               intElement("rootInt1", 123),
                                               intElement("rootInt2", 456),
@@ -37,16 +41,15 @@ int main(int argc, char** argv) {
                                               embeddedDocumentElement("child", childSchema));
 
     createRoot(file, rootSchema);
-
-    condition* cond = condOr(condEqual(intElement("childInt1", 111)), condEqual(intElement("grChildInt2", 456)));
-    query* selectOrDelete = selectOrDeleteQuery("root", NULL, 2,
-                                                selectOrDeleteQuery("child", cond, 1,
-                                                       selectOrDeleteQuery("grandChild", cond, 0)),
-                                                selectOrDeleteQuery("child", cond, 0));
-    query* update = updateQuery("root", NULL, NULL,2,
-                                updateQuery("child", cond, NULL, 1,
-                                            updateQuery("grandChild", cond, newGrandChildSchema, 0)),
-                                updateQuery("child", cond, childSchema, 0));
+    condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
+    query* selectOrDelete = selectOrDeleteQuery(rootSchema, NULL, 2,
+                                                selectOrDeleteQuery(childSchema, cond, 1,
+                                                       selectOrDeleteQuery(grandChildSchema, cond, 0)),
+                                                selectOrDeleteQuery(childSchema, cond, 0));
+    query* update = updateQuery(rootSchema, NULL, NULL,2,
+                                updateQuery(childSchema, cond, NULL, 1,
+                                            updateQuery(grandChildSchema, cond, newGrandChildSchema, 0)),
+                                updateQuery(childSchema, cond, newChildSchema, 0));
     printf("RESULT OF FIND:\n");
     iterator* it = executeSelect(file, selectOrDelete);
     while (hasNext(it)) {
@@ -73,9 +76,7 @@ int main(int argc, char** argv) {
     }
     */
 
-    destroySchema(childSchema);
-    destroySchema(grandChildSchema);
-    destroySchema(rootSchema); // TODO: разобраться с очисткой строк и вложенных схем
+    destroySchema(rootSchema);
 
     closeFile(file);
     return 0;

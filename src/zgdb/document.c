@@ -7,14 +7,15 @@
 #include "element.h"
 
 document* createDocument() {
-    document* doc = malloc(sizeof(document));
-    if (doc) {
-        doc->schema = malloc(sizeof(documentSchema));
-        if (doc->schema) {
-            *doc->schema = (documentSchema) { 0 };
+    documentSchema* schema = malloc(sizeof(documentSchema));
+    if (schema) {
+        *schema = (documentSchema) { 0 };
+        document* doc = malloc(sizeof(document));
+        if (doc) {
+            doc->schema = schema;
             return doc;
         }
-        free(doc);
+        free(schema);
     }
     return NULL;
 }
@@ -207,6 +208,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
     return ref;
 }
 
+// TODO: free(el)?
 document* readDocument(zgdbFile* file, uint64_t indexNumber) {
     zgdbIndex index = getIndex(file, indexNumber);
     if (index.flag == INDEX_ALIVE) {
@@ -216,6 +218,7 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
             document* doc = createDocument();
             if (doc) {
                 doc->header = header;
+                strcpy(doc->schema->name, doc->header.schemaName);
                 uint64_t bytesRead = sizeof(documentHeader);
                 while (bytesRead < header.size) {
                     element* el = malloc(sizeof(element));
@@ -357,4 +360,8 @@ void destroyDocumentRef(documentRef* ref) {
 
 element* getElementFromDocument(document* doc, const char* key) {
     return doc ? getElementFromSchema(doc->schema, key) : NULL;
+}
+
+documentSchema* getSchemaFromDocument(document* doc) {
+    return doc ? doc->schema : NULL;
 }

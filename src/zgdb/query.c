@@ -8,12 +8,12 @@
 #include "iterator.h"
 #include "schema.h"
 
-query* createQuery(char* schemaName, condition* cond, bool isUpdating, documentSchema* newValues, uint64_t length,
+query* createQuery(documentSchema* schema, condition* cond, bool isUpdating, documentSchema* newValues, uint64_t length,
                    va_list arg) {
-    if (schemaName && strlen(schemaName) <= 12) {
+    if (schema && checkNewValues(schema, newValues)) {
         query* q = malloc(sizeof(query));
         if (q) {
-            strcpy(q->schemaName, schemaName);
+            q->schema = schema;
             q->cond = cond;
             q->isUpdating = isUpdating;
             q->newValues = newValues;
@@ -46,18 +46,18 @@ query* createQuery(char* schemaName, condition* cond, bool isUpdating, documentS
     return NULL;
 }
 
-query* selectOrDeleteQuery(char* schemaName, condition* cond, uint64_t length, ...) {
+query* selectOrDeleteQuery(documentSchema* schema, condition* cond, uint64_t length, ...) {
     va_list arg;
     va_start(arg, length);
-    query* q = createQuery(schemaName, cond, false, NULL, length, arg);
+    query* q = createQuery(schema, cond, false, NULL, length, arg);
     va_end(arg);
     return q;
 }
 
-query* updateQuery(char* schemaName, condition* cond, documentSchema* newValues, uint64_t length, ...) {
+query* updateQuery(documentSchema* schema, condition* cond, documentSchema* newValues, uint64_t length, ...) {
     va_list arg;
     va_start(arg, length);
-    query* q = createQuery(schemaName, cond, true, newValues, length, arg);
+    query* q = createQuery(schema, cond, true, newValues, length, arg);
     va_end(arg);
     return q;
 }
@@ -74,22 +74,43 @@ void destroyQuery(query* q) {
     }
 }
 
-bool checkRoot(zgdbFile* file, const char* schemaName) {
+bool checkRoot(zgdbFile* file, documentSchema* schema) {
     zgdbIndex index = getIndex(file, file->header.indexOfRoot);
     if (index.flag == INDEX_ALIVE) {
         documentHeader header;
         fseeko64(file->f, index.offset, SEEK_SET); // спуск в корень по смещению
         // Читаем заголовок корня и проверяем, соответствует ли имя корня в запросе его истинному имени:
-        if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
+        if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schema->name, header.schemaName)) {
             return true;
         }
     }
     return false;
 }
 
+bool checkNewValues(documentSchema* schema, documentSchema* newValues) {
+    // Если newValues == NULL, то сразу возвращаем true:
+    if (!newValues) {
+        return true;
+    }
+    /* Делаем проверки на то, что:
+     * 1. schema и newValues - разные указатели;
+     * 2. Их имена соответствуют;
+     * 3. В newValues вообще есть элементы. */
+    if (schema != newValues && !strcmp(schema->name, newValues->name) && newValues->length) {
+        for (uint64_t i = 0; i < newValues->length; i++) {
+            element* tmp = getElementFromSchema(schema, newValues->elements[i]->key);
+            if (!tmp || tmp->type != newValues->elements[i]->type) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
 bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber,
                         bool (* mutate)(zgdbFile*, uint64_t, documentSchema*), iterator* it) {
-    bool match = checkDocument(file, indexNumber, q->schemaName, q->cond);
+    bool match = checkDocument(file, indexNumber, q->schema, q->cond);
     resetCondition(q->cond); // сброс cond.met
     if (match) {
         // Если мутация вернула false, то это говорит об ошибке, надо возвращать false:
@@ -117,7 +138,7 @@ iterator* executeSelect(zgdbFile* file, query* q) {
         iterator* it = createIterator();
         if (it) {
             if (q) {
-                if (checkRoot(file, q->schemaName) && !q->isUpdating &&
+                if (checkRoot(file, q->schema) && !q->isUpdating &&
                     executeNestedQuery(file, q, file->header.indexOfRoot, NULL, it)) {
                     return it;
                 }
@@ -131,7 +152,7 @@ iterator* executeSelect(zgdbFile* file, query* q) {
 }
 
 iterator* executeDelete(zgdbFile* file, query* q) {
-    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schemaName) && !q->isUpdating) {
+    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schema) && !q->isUpdating) {
         iterator* it = createIterator();
         if (it) {
             if (executeNestedQuery(file, q, file->header.indexOfRoot, &remDocument, it)) {
@@ -144,7 +165,7 @@ iterator* executeDelete(zgdbFile* file, query* q) {
 }
 
 iterator* executeUpdate(zgdbFile* file, query* q) {
-    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schemaName) && q->isUpdating) {
+    if (q && file->header.indexOfRoot != DOCUMENT_NOT_EXIST && checkRoot(file, q->schema) && q->isUpdating) {
         iterator* it = createIterator();
         if (it) {
             if (executeNestedQuery(file, q, file->header.indexOfRoot, &updateDocument, it)) {

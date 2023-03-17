@@ -3,6 +3,7 @@
 
 #include "condition.h"
 #include "element.h"
+#include "schema.h"
 
 condition* createCondition(operationType type, void* operand1, void* operand2) {
     condition* cond = NULL;
@@ -125,14 +126,14 @@ bool checkCondition(element* el, condition* cond) {
     return result;
 }
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema, condition* cond) {
     if (indexNumber != DOCUMENT_NOT_EXIST) {
         zgdbIndex index = getIndex(file, indexNumber);
         if (index.flag == INDEX_ALIVE) {
             fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
             documentHeader header;
             // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
-            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
+            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schema->name, header.schemaName)) {
                 // Если условие не указано, то соответствия схемы достаточно:
                 if (!cond) {
                     return true;

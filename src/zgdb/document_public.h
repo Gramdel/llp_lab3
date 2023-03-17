@@ -40,4 +40,6 @@ bool createRoot(zgdbFile* file, documentSchema* schema);
 
 element* getElementFromDocument(document* doc, const char* key);
 
+documentSchema* getSchemaFromDocument(document* doc);
+
 #endif

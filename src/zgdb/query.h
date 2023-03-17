@@ -10,13 +10,16 @@
 struct query {
     query** nestedQueries; // массив указателей на вложенные запросы
     uint64_t length; // длина массива вложенных запросов
-    char schemaName[13]; // требуемое имя схемы
+    documentSchema* schema; // требуемая схема
     condition* cond; // условие(я)
     bool isUpdating; // переменная-флаг, указывающая на то, нужно ли обновлять значения или нет
     documentSchema* newValues;  // указатель на схему, в которой хранятся новые значения
 };
 
-iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q, bool (*mutate)(zgdbFile*,uint64_t,documentSchema*));
+iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q,
+                           bool (* mutate)(zgdbFile*, uint64_t, documentSchema*));
+
+bool checkNewValues(documentSchema* schema, documentSchema* newValues);
 
 void destroyQuery(query* q);
 

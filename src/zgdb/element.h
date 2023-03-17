@@ -17,9 +17,10 @@ struct element {
         double doubleValue;
         uint8_t booleanValue;
         str stringValue; // строка
-        documentRef documentValue; // указатель на документ
-        documentSchema* schemaValue; // указатель на схему; служебный тип
+        documentRef documentValue; // ссылка на документ; этот тип оказывается в элементе после загрузки из файла
+        documentSchema* schemaValue; // указатель на схему; этот тип оказывается в элементе при создании через конструктор
     };
+    bool wasLoaded; // служебный флаг, чтобы понять, нужно ли вызывать free(schemaValue) и free(stringValue) при destroy
 };
 
 /* Функция для записи элемента в файл.

@@ -15,4 +15,7 @@ condition* condAnd(condition* cond1, condition* cond2);
 condition* condOr(condition* cond1, condition* cond2);
 condition* condNot(condition* cond);
 
+// TODO: Написать реализацию.
+void destroyCondition(condition* cond);
+
 #endif

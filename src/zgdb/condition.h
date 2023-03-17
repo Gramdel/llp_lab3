@@ -2,6 +2,7 @@
 #define _CONDITION_H_
 
 #include "condition_public.h"
+#include "schema_public.h"
 
 /* Типы операций. Логические операции применимы ТОЛЬКО к условиям (чтобы делать, например, нечто вроде !cond1 || cond2) */
 typedef enum operationType {
@@ -32,6 +33,6 @@ bool checkCondition(element* el, condition* cond);
 
 void resetCondition(condition* cond);
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond);
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema, condition* cond);
 
 #endif

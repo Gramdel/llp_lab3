@@ -10,6 +10,7 @@ element* createPointerToElement(char* key, element el) {
         element* ptr = malloc(sizeof(element));
         if (ptr) {
             *ptr = el;
+            ptr->wasLoaded = false; // устанавливаем флаг
             memset(ptr->key, 0, 13);
             strncpy(ptr->key, key, 13);
             return ptr;
@@ -47,10 +48,10 @@ element* embeddedDocumentElement(char* key, documentSchema* embeddedSchema) {
 
 void destroyElement(element* el) {
     if (el) {
-        if (el->type == TYPE_STRING) {
-            if (el->stringValue.data) {
-                free(el->stringValue.data);
-            }
+        if (el->wasLoaded && el->type == TYPE_STRING && el->stringValue.data) {
+            free(el->stringValue.data);
+        } else if (!el->wasLoaded && el->type == TYPE_EMBEDDED_DOCUMENT && el->schemaValue) {
+            destroySchema(el->schemaValue);
         }
         free(el);
     }
@@ -110,6 +111,7 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
 }
 
 uint64_t readElement(zgdbFile* file, element* el, bool skipStrings) {
+    el->wasLoaded = true;
     if (fread(&el->type, sizeof(uint8_t), 1, file->f) && fread(&el->key, sizeof(char), 13, file->f) == 13) {
         uint64_t bytesRead = sizeof(uint8_t) + sizeof(char) * 13;
         switch (el->type) {
