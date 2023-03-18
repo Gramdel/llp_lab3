@@ -31,14 +31,20 @@ int main(int argc, char** argv) {
                                                intElement("childInt1", 121),
                                                intElement("childInt2", 212));
 
-    documentSchema* rootSchema = createSchema("root", 7,
+    documentSchema* rootSchema = createSchema("root", 11,
                                               intElement("rootInt1", 123),
                                               intElement("rootInt2", 456),
                                               intElement("rootInt3", 789),
                                               booleanElement("isFirst", true),
                                               doubleElement("rootDouble", 128.128),
                                               stringElement("rootString", "I AM ROOT"),
-                                              embeddedDocumentElement("child", childSchema));
+                                              embeddedDocumentElement("child", childSchema),
+                                              embeddedDocumentElement("child2", childSchema),
+                                              embeddedDocumentElement("child3", childSchema),
+                                              embeddedDocumentElement("child4", childSchema),
+                                              embeddedDocumentElement("grandChild", grandChildSchema));
+
+    documentSchema* newRootSchema = createSchema("root", 1, stringElement("rootString", "HEY BITCH!"));
 
     createRoot(file, rootSchema);
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
@@ -46,7 +52,7 @@ int main(int argc, char** argv) {
                                                 selectOrDeleteQuery(childSchema, cond, 1,
                                                        selectOrDeleteQuery(grandChildSchema, cond, 0)),
                                                 selectOrDeleteQuery(childSchema, cond, 0));
-    query* update = updateQuery(rootSchema, NULL, NULL,2,
+    query* update = updateQuery(rootSchema, NULL, newRootSchema,2,
                                 updateQuery(childSchema, cond, NULL, 1,
                                             updateQuery(grandChildSchema, cond, newGrandChildSchema, 0)),
                                 updateQuery(childSchema, cond, newChildSchema, 0));

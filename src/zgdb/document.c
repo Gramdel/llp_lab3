@@ -320,25 +320,29 @@ bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newVal
         fseeko64(file->f, index.offset, SEEK_SET);
         documentHeader header;
         if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-            uint64_t bytesRead = sizeof(documentHeader);
-            while (bytesRead < header.size) {
-                element el;
-                uint64_t tmp = readElement(file, &el, false);
+            uint64_t bytesLeft = header.size - sizeof(documentHeader);
+            while (bytesLeft > 0) {
+                element oldElement;
+                uint64_t tmp = readElement(file, &oldElement, true);
                 if (!tmp) {
                     return false;
                 }
                 // Если элемент не существует, то выходим из цикла. Иначе - обновляем элемент:
-                if (el.type == TYPE_NOT_EXIST) {
-                    bytesRead = header.size;
+                if (oldElement.type == TYPE_NOT_EXIST) {
+                    bytesLeft = 0;
                 } else {
-                    bytesRead += tmp;
-                    element* newElement = getElementFromSchema(newValues, el.key);
+                    bytesLeft -= tmp;
+                    element* newElement = getElementFromSchema(newValues, oldElement.key);
                     if (newElement) {
                         fseeko64(file->f, (int64_t) -tmp, SEEK_CUR);
-                        if (!updateElement(file, newElement, indexNumber)) {
+                        if (newElement->type == TYPE_STRING) {
+                            updateStringElement(file, &index, &header, &oldElement, newElement);
+                        } else if (newElement->type == TYPE_EMBEDDED_DOCUMENT) {
+
+                        } else if (!writeElement(file, newElement, indexNumber)) {
                             return false;
                         }
-                        // TODO: обернуть в отдельную функцию update, потому что тут полная жесть будет со строкой
+                        fseeko64(file->f, 0, SEEK_CUR); // этот вызов нужен для того, чтобы можно было сделать fread
                     }
                 }
             }

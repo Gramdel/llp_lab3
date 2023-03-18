@@ -16,6 +16,9 @@ struct query {
     documentSchema* newValues;  // указатель на схему, в которой хранятся новые значения
 };
 
+bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber,
+                        bool (* mutate)(zgdbFile*, uint64_t, documentSchema*), iterator* it);
+
 iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q,
                            bool (* mutate)(zgdbFile*, uint64_t, documentSchema*));
 

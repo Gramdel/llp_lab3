@@ -53,18 +53,6 @@ char* getStringValue(element el);
 /* Функция для получения ссылки на вложенный документ из элемента типа TYPE_EMBEDDED_DOCUMENT. */
 //documentRef* getDocumentValue(element el);
 
-/* Функция для обновления значения у элемента типа TYPE_INT.
- * Возвращает false при неудаче. */
-//bool updateIntegerValue(zgdbFile* file, char* neededKey, int32_t value, documentRef* ref);
-
-/* Функция для обновления значения у элемента типа TYPE_DOUBLE.
- * Возвращает false при неудаче. */
-//bool updateDoubleValue(zgdbFile* file, char* neededKey, double value, documentRef* ref);
-
-/* Функция для обновления значения у элемента типа TYPE_BOOLEAN.
- * Возвращает false при неудаче. */
-//bool updateBooleanValue(zgdbFile* file, char* neededKey, uint8_t value, documentRef* ref);
-
 /* Функция для обновления значения у элемента типа TYPE_STRING.
  * Возвращает false при неудаче. */
 //bool updateStringValue(zgdbFile* file, char* neededKey, char* value, documentRef* ref);

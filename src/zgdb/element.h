@@ -34,13 +34,10 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber);
  * Возвращает количество прочитанных байт. */
 uint64_t readElement(zgdbFile* file, element* el, bool skipStrings);
 
-bool updateElement(zgdbFile* file, element* newElement, uint64_t parentIndexNumber);
+bool updateStringElement(zgdbFile* file, zgdbIndex* index, documentHeader* header, element* oldElement, element* newElement);
 
 /* Функция для поиска элемента в документе. Устанавливает с помощью fseek смещение на начало элемента.
  * Возвращает тип найденного элемента или TYPE_NOT_EXIST (при ошибке). */
 elementType navigateToElement(zgdbFile* file, char* neededKey, uint64_t i);
-
-/* Функция для вывода элементов вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
-void printElementOfEmbeddedDocument(zgdbFile* file, element* el, uint64_t nestingLevel);
 
 #endif

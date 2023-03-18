@@ -108,31 +108,6 @@ bool checkNewValues(documentSchema* schema, documentSchema* newValues) {
     return false;
 }
 
-bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber,
-                        bool (* mutate)(zgdbFile*, uint64_t, documentSchema*), iterator* it) {
-    bool match = checkDocument(file, indexNumber, q->schema, q->cond);
-    resetCondition(q->cond); // сброс cond.met
-    if (match) {
-        // Если мутация вернула false, то это говорит об ошибке, надо возвращать false:
-        if (!mutate || mutate(file, indexNumber, q->newValues)) {
-            /* Если в q есть вложенные дети, то вызываем поиск по ним, если нет - мы дошли до
-             * конца цепочки, добавляем номер документа в итератор: */
-            if (q->length) {
-                /* Предварительно, если q - обновляющий запрос и для него указаны новые значения,
-                 * то его тоже надо занести в итератор, поскольку он затрагивался: */
-                if (q->newValues) {
-                    return addRef(it, (documentRef) { indexNumber }) &&
-                           addAllRefs(it, findAllDocuments(file, indexNumber, q, mutate));
-                }
-                return addAllRefs(it, findAllDocuments(file, indexNumber, q, mutate));
-            }
-            return addRef(it, (documentRef) { indexNumber });
-        }
-        return false;
-    }
-    return true;
-}
-
 iterator* executeSelect(zgdbFile* file, query* q) {
     if (file->header.indexOfRoot != DOCUMENT_NOT_EXIST) {
         iterator* it = createIterator();
@@ -177,6 +152,31 @@ iterator* executeUpdate(zgdbFile* file, query* q) {
     return NULL;
 }
 
+bool executeNestedQuery(zgdbFile* file, query* q, uint64_t indexNumber,
+                        bool (* mutate)(zgdbFile*, uint64_t, documentSchema*), iterator* it) {
+    bool match = checkDocument(file, indexNumber, q->schema, q->cond);
+    resetCondition(q->cond); // сброс cond.met
+    if (match) {
+        // Если мутация вернула false, то это говорит об ошибке, надо возвращать false:
+        if (!mutate || mutate(file, indexNumber, q->newValues)) {
+            /* Если в q есть вложенные дети, то вызываем поиск по ним, если нет - мы дошли до
+             * конца цепочки, добавляем номер документа в итератор: */
+            if (q->length) {
+                /* Предварительно, если q - обновляющий запрос и для него указаны новые значения,
+                 * то его тоже надо занести в итератор, поскольку он затрагивался: */
+                if (q->newValues) {
+                    return addRef(it, (documentRef) { indexNumber }) &&
+                           addAllRefs(it, findAllDocuments(file, indexNumber, q, mutate));
+                }
+                return addAllRefs(it, findAllDocuments(file, indexNumber, q, mutate));
+            }
+            return addRef(it, (documentRef) { indexNumber });
+        }
+        return false;
+    }
+    return true;
+}
+
 iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q,
                            bool (* mutate)(zgdbFile*, uint64_t, documentSchema*)) {
     zgdbIndex index = getIndex(file, parentIndexNumber);
@@ -201,11 +201,17 @@ iterator* findAllDocuments(zgdbFile* file, uint64_t parentIndexNumber, query* q,
                         case TYPE_EMBEDDED_DOCUMENT:
                             // Запускаем обработку вложенного запроса:
                             for (uint64_t i = 0; i < q->length; i++) {
+                                int64_t offsetOfNextElement = ftello64(file->f) - index.offset;
                                 if (!executeNestedQuery(file, q->nestedQueries[i], el.documentValue.indexNumber, mutate,
                                                         it)) {
                                     destroyIterator(it);
                                     return NULL;
                                 }
+                                /* executeNestedQuery может вызвать update, и, если этот документ обновляется или
+                                 * перемещается, то следующий элемент будет находиться уже не там, где находится
+                                 * указатель в файле. Нужно переместить указатель: */
+                                index = getIndex(file, parentIndexNumber);
+                                fseeko64(file->f, index.offset + offsetOfNextElement, SEEK_SET);
                             }
                         default:
                             bytesRead += tmp;
