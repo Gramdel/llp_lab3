@@ -24,6 +24,8 @@ typedef struct __attribute__((packed)) documentHeader {
     uint64_t size : 40; // (5 байт) размер документа в байтах
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
     uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу
+    uint64_t lastChildIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к последнему добавленному ребёнку
+    uint64_t brotherIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к следующему "брату" документа
     documentId id; // id, привязанный к документу
     char schemaName[13]; // имя схемы, по которой построен документ
 } documentHeader;
@@ -57,5 +59,7 @@ bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newVal
 
 // TODO: описание
 bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues);
+
+bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q);
 
 #endif

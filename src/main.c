@@ -22,28 +22,23 @@ int main(int argc, char** argv) {
                                                     intElement("grChildInt1", 505),
                                                     intElement("grChildInt3", 987));
 
-    documentSchema* childSchema = createSchema("child", 3,
+    documentSchema* childSchema = createSchema("child", 2,
                                                intElement("childInt1", 111),
-                                               intElement("childInt2", 222),
-                                               embeddedDocumentElement("grandChild", grandChildSchema));
+                                               intElement("childInt2", 222));
 
-    documentSchema* newChildSchema = createSchema("child", 3,
+    documentSchema* newChildSchema = createSchema("child", 2,
                                                intElement("childInt1", 121),
                                                intElement("childInt2", 212));
 
-    documentSchema* rootSchema = createSchema("root", 11,
+    documentSchema* rootSchema = createSchema("root", 6,
                                               intElement("rootInt1", 123),
                                               intElement("rootInt2", 456),
                                               intElement("rootInt3", 789),
                                               booleanElement("isFirst", true),
                                               doubleElement("rootDouble", 128.128),
-                                              stringElement("rootString", "I AM ROOT"),
-                                              embeddedDocumentElement("child", childSchema),
-                                              embeddedDocumentElement("child2", childSchema),
-                                              embeddedDocumentElement("child3", childSchema),
-                                              embeddedDocumentElement("child4", childSchema),
-                                              embeddedDocumentElement("grandChild", grandChildSchema));
+                                              stringElement("rootString", "I AM ROOT"));
 
+    /*
     documentSchema* newRootSchema = createSchema("root", 1, stringElement("rootString", "HEY BITCH!"));
 
     createRoot(file, rootSchema);
@@ -56,7 +51,14 @@ int main(int argc, char** argv) {
                                 updateQuery(childSchema, cond, NULL, 1,
                                             updateQuery(grandChildSchema, cond, newGrandChildSchema, 0)),
                                 updateQuery(childSchema, cond, newChildSchema, 0));
-    printf("RESULT OF FIND:\n");
+    */
+    query* insert = updateQuery(NULL, NULL, rootSchema,2,
+                                updateQuery(NULL, NULL, childSchema, 1,
+                                            updateQuery(NULL, NULL, grandChildSchema, 0)),
+                                updateQuery(NULL, NULL, newChildSchema, 0));
+    printf(executeInsert(file, insert) ? "true" : "false");
+
+    /*
     iterator* it = executeSelect(file, selectOrDelete);
     while (hasNext(it)) {
         document* doc = next(file, it);

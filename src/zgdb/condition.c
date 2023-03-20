@@ -127,6 +127,11 @@ bool checkCondition(element* el, condition* cond) {
 }
 
 bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema, condition* cond) {
+    // Если название схемы не указано, то это говорит о том, что документ ещё не создан. Возвращаем true:
+    if (!schema) {
+        return true;
+    }
+    // Если название указано, то находим индекс и проверяем документ:
     if (indexNumber != DOCUMENT_NOT_EXIST) {
         zgdbIndex index = getIndex(file, indexNumber);
         if (index.flag == INDEX_ALIVE) {

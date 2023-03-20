@@ -21,8 +21,8 @@ typedef struct document document;
 
 /* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
  * и записывает в них информацию об индексе добавляемого документа (родителя).
- * Возвращает ссылку на документ или NULL (при неудаче). */
-documentRef* writeDocument(zgdbFile* file, documentSchema* schema);
+ * Возвращает ссылку на документ или NULL (при неудаче). TODO*/
+documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber);
 
 document* readDocument(zgdbFile* file, uint64_t indexNumber);
 

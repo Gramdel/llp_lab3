@@ -31,7 +31,7 @@ void destroyDocument(document* doc) {
 
 bool createRoot(zgdbFile* file, documentSchema* schema) {
     if (file->header.indexOfRoot == DOCUMENT_NOT_EXIST) {
-        documentRef* root = writeDocument(file, schema);
+        documentRef* root = writeDocument(file, schema, DOCUMENT_NOT_EXIST);
         if (root) {
             file->header.indexOfRoot = root->indexNumber;
             free(root);
@@ -127,13 +127,15 @@ bool moveFirstDocuments(zgdbFile* file) {
     return true;
 }
 
-documentRef* writeDocument(zgdbFile* file, documentSchema* schema) {
+documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber) {
     if (!schema) {
         return NULL;
     }
     int64_t pos = ftello64(file->f); // сохраняем текущую позицию, чтобы вернуться в неё после записи
     documentHeader header;
     header.size = calcDocumentSize(schema);
+    header.brotherIndexNumber = brotherIndexNumber;
+    header.lastChildIndexNumber = DOCUMENT_NOT_EXIST;
     header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
     memset(header.schemaName, 0, 13);
     strcpy(header.schemaName, schema->name);
@@ -348,6 +350,49 @@ bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newVal
             }
             return true;
         }
+    }
+    return false;
+}
+
+bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
+    // Если вставлять документ не надо (нет новой схемы), то возвращаем true. Иначе - рекурсивно вставляем документы:
+    if (!q->newValues) {
+        return true;
+    }
+    // Записываем документ:
+    documentRef* ref = writeDocument(file, q->newValues, *brotherIndexNumber);
+    if (ref) {
+        // Передаём свой индекс родителю в качестве индекса последнего ребёнка:
+        *brotherIndexNumber = ref->indexNumber;
+        destroyDocumentRef(ref);
+        if (q->nestedQueries) {
+            // Вставляем детей:
+            uint64_t lastChildIndexNumber = DOCUMENT_NOT_EXIST;
+            for (uint64_t i = 0; i < q->length; i++) {
+                if (!insertDocument(file, &lastChildIndexNumber, q->nestedQueries[i])) {
+                    return false;
+                }
+            }
+            // Спускаемся в добавленный документ (нового родителя):
+            zgdbIndex index = getIndex(file, *brotherIndexNumber);
+            if (index.flag == INDEX_ALIVE) {
+                // Считываем заголовок добавленного документа:
+                fseeko64(file->f, index.offset, SEEK_SET);
+                documentHeader header;
+                if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
+                    return false;
+                }
+                // Перезаписываем индекс последнего ребёнка:
+                header.lastChildIndexNumber = lastChildIndexNumber;
+                fseeko64(file->f, -(int64_t) sizeof(documentHeader), SEEK_CUR);
+                if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                    return false;
+                }
+                return true;
+            }
+            return false;
+        }
+        return true;
     }
     return false;
 }

@@ -78,7 +78,7 @@ uint64_t writeElement(zgdbFile* file, element* el, uint64_t parentIndexNumber) {
             bytesWritten += fwrite(el->stringValue.data, sizeof(char), el->stringValue.size, file->f);
             break;
         case TYPE_EMBEDDED_DOCUMENT:
-            ref = writeDocument(file, el->schemaValue);
+            ref = writeDocument(file, el->schemaValue, DOCUMENT_NOT_EXIST);
             if (!ref) {
                 return 0;
             }
@@ -532,7 +532,7 @@ bool updateDocumentValue(zgdbFile* file, char* neededKey, documentSchema* value,
             if (oldChildIndexNumber == DOCUMENT_NOT_EXIST ||
                 removeEmbeddedDocument(file, oldChildIndexNumber, ref->indexNumber) == INDEX_ALIVE) {
                 // Записываем нового ребёнка в файл:
-                documentRef* newValueRef = writeDocument(file, value);
+                documentRef* newValueRef = writeDocument(file, value, DOCUMENT_NOT_EXIST);
                 if (newValueRef) {
                     zgdbIndex index = getIndex(file, newValueRef->indexNumber);
                     if (index.flag == INDEX_ALIVE) {
