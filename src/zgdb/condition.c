@@ -62,9 +62,6 @@ int32_t compare(element* el1, element* el2) {
             return el1->booleanValue - el2->booleanValue;
         case TYPE_STRING:
             return strcmp(el1->stringValue.data, el2->stringValue.data);
-        case TYPE_EMBEDDED_DOCUMENT:
-            // TODO: распарсить el2->schemaValue и проверить документ el1->documentValue на соответствие (поэлементно)
-            return 0;
     }
     return 0;
 }
@@ -126,9 +123,9 @@ bool checkCondition(element* el, condition* cond) {
     return result;
 }
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema, condition* cond) {
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
     // Если название схемы не указано, то это говорит о том, что документ ещё не создан. Возвращаем true:
-    if (!schema) {
+    if (!schemaName) {
         return true;
     }
     // Если название указано, то находим индекс и проверяем документ:
@@ -138,7 +135,7 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema,
             fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
             documentHeader header;
             // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
-            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schema->name, header.schemaName)) {
+            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
                 // Если условие не указано, то соответствия схемы достаточно:
                 if (!cond) {
                     return true;

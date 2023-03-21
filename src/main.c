@@ -38,42 +38,45 @@ int main(int argc, char** argv) {
                                               doubleElement("rootDouble", 128.128),
                                               stringElement("rootString", "I AM ROOT"));
 
-    /*
     documentSchema* newRootSchema = createSchema("root", 1, stringElement("rootString", "HEY BITCH!"));
+    /*
 
     createRoot(file, rootSchema);
-    condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
-    query* selectOrDelete = selectOrDeleteQuery(rootSchema, NULL, 2,
-                                                selectOrDeleteQuery(childSchema, cond, 1,
-                                                       selectOrDeleteQuery(grandChildSchema, cond, 0)),
-                                                selectOrDeleteQuery(childSchema, cond, 0));
-    query* update = updateQuery(rootSchema, NULL, newRootSchema,2,
-                                updateQuery(childSchema, cond, NULL, 1,
-                                            updateQuery(grandChildSchema, cond, newGrandChildSchema, 0)),
-                                updateQuery(childSchema, cond, newChildSchema, 0));
     */
-    query* insert = updateQuery(NULL, NULL, rootSchema,2,
-                                updateQuery(NULL, NULL, childSchema, 1,
-                                            updateQuery(NULL, NULL, grandChildSchema, 0)),
-                                updateQuery(NULL, NULL, newChildSchema, 0));
-    printf(executeInsert(file, insert) ? "true" : "false");
+    condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
 
-    /*
+    query* insert = insertQuery(NULL, NULL, rootSchema,1,
+                                insertQuery(NULL, NULL, childSchema, 1,
+                                            insertQuery(NULL, NULL, grandChildSchema, 0)),
+                                insertQuery(NULL, NULL, childSchema, 0));
+
+    query* update = updateQuery("root", NULL, newRootSchema,2,
+                                updateQuery("child", cond, NULL, 1,
+                                            updateQuery("grandChild", cond, newGrandChildSchema, 0)),
+                                updateQuery("child", cond, newChildSchema, 0));
+
+    query* selectOrDelete = selectOrDeleteQuery("root", NULL, 2,
+                                                selectOrDeleteQuery("child", cond, 1,
+                                                                    selectOrDeleteQuery("grandChild", cond, 0)),
+                                                selectOrDeleteQuery("child", NULL, 0));
+
+    printf(executeInsert(file, insert) ? "true\n" : "false\n");
     iterator* it = executeSelect(file, selectOrDelete);
     while (hasNext(it)) {
         document* doc = next(file, it);
         printDocument(file, doc);
         destroyDocument(doc);
     }
+    destroyIterator(it);
 
-
-    iterator* it2 = executeUpdate(file, update);
-    while (hasNext(it2)) {
-        document* doc = next(file, it2);
+    printf(executeUpdate(file, update) ? "true\n" : "false\n");
+    it = executeSelect(file, selectOrDelete);
+    while (hasNext(it)) {
+        document* doc = next(file, it);
         printDocument(file, doc);
         destroyDocument(doc);
     }
-
+    destroyIterator(it);
 
     /*
     iterator* it3 = executeDelete(file, selectOrDelete);

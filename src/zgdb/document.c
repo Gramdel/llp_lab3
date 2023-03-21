@@ -29,18 +29,6 @@ void destroyDocument(document* doc) {
     }
 }
 
-bool createRoot(zgdbFile* file, documentSchema* schema) {
-    if (file->header.indexOfRoot == DOCUMENT_NOT_EXIST) {
-        documentRef* root = writeDocument(file, schema, DOCUMENT_NOT_EXIST);
-        if (root) {
-            file->header.indexOfRoot = root->indexNumber;
-            free(root);
-            return writeHeader(file);
-        }
-    }
-    return false;
-}
-
 bool moveFirstDocuments(zgdbFile* file) {
     // Смещаемся к началу документов:
     int64_t newPos;
@@ -127,22 +115,21 @@ bool moveFirstDocuments(zgdbFile* file) {
     return true;
 }
 
-documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber) {
+opt_uint64_t writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber) {
     if (!schema) {
-        return NULL;
+        return not_present_uint64_t();
     }
     int64_t pos = ftello64(file->f); // сохраняем текущую позицию, чтобы вернуться в неё после записи
     documentHeader header;
     header.size = calcDocumentSize(schema);
     header.brotherIndexNumber = brotherIndexNumber;
     header.lastChildIndexNumber = DOCUMENT_NOT_EXIST;
-    header.parentIndexNumber = DOCUMENT_NOT_EXIST; // указывает на то, что родителя нет
     memset(header.schemaName, 0, 13);
     strcpy(header.schemaName, schema->name);
 
     // Сразу выделяем индексы, если список пустой:
     if (!file->list.front && !moveFirstDocuments(file)) {
-        return NULL;
+        return not_present_uint64_t();
     }
     // Если есть подходящая дырка, то пишем документ туда:
     uint64_t newSize = 0;
@@ -152,7 +139,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
         zgdbIndex index = getIndex(file, file->list.front->indexNumber);
         if (index.flag != INDEX_DEAD ||
             !updateIndex(file, file->list.front->indexNumber, wrap_uint8_t(INDEX_ALIVE), not_present_int64_t())) {
-            return NULL;
+            return not_present_uint64_t();
         }
         // Заполняем заголовок документа:
         header.indexNumber = file->list.front->indexNumber;
@@ -162,7 +149,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
             uint8_t startOfUnusedSpaceMark = TYPE_NOT_EXIST;
             fseeko64(file->f, index.offset + (int64_t) header.size, SEEK_SET);
             if (!fwrite(&startOfUnusedSpaceMark, sizeof(uint8_t), 1, file->f)) {
-                return NULL;
+                return not_present_uint64_t();
             }
             newSize = file->list.front->size;
         }
@@ -172,7 +159,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
         if (file->list.back->size != 0 && !moveFirstDocuments(file) ||
             !updateIndex(file, file->list.back->indexNumber, wrap_uint8_t(INDEX_ALIVE),
                          wrap_int64_t(file->header.fileSize))) {
-            return NULL;
+            return not_present_uint64_t();
         }
         // Заполняем заголовок документа:
         header.indexNumber = file->list.back->indexNumber;
@@ -181,7 +168,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
         // Обновляем размер файла
         file->header.fileSize += (int64_t) header.size;
         if (!writeHeader(file)) {
-            return NULL;
+            return not_present_uint64_t();
         }
     }
 
@@ -189,7 +176,7 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
     uint64_t bytesLeft = header.size;
     fseeko64(file->f, header.id.offset + (int64_t) sizeof(documentHeader), SEEK_SET);
     for (uint64_t i = 0; i < schema->length; i++) {
-        bytesLeft -= writeElement(file, schema->elements[i], header.indexNumber);
+        bytesLeft -= writeElement(file, schema->elements[i]);
     }
     // Обновляем размер документа (если надо) и записываем время создания документа в заголовок:
     if (newSize) {
@@ -199,15 +186,18 @@ documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
     // Перемещаемся к началу и записываем заголовок:
     fseeko64(file->f, header.id.offset, SEEK_SET);
     bytesLeft -= fwrite(&header, sizeof(documentHeader), 1, file->f) * sizeof(documentHeader);
-    documentRef* ref = NULL;
-    if (!bytesLeft) {
-        ref = malloc(sizeof(documentRef));
-        if (ref) {
-            ref->indexNumber = header.indexNumber;
+    if (bytesLeft) {
+        return not_present_uint64_t();
+    }
+    // Если созданный документ - корень, добавляем запись о его индексе в заголовок файла:
+    if (file->header.indexOfRoot == DOCUMENT_NOT_EXIST) {
+        file->header.indexOfRoot = header.indexNumber;
+        if (!writeHeader(file)) {
+            return not_present_uint64_t();
         }
     }
     fseeko64(file->f, pos, SEEK_SET);
-    return ref;
+    return wrap_uint64_t(header.indexNumber);
 }
 
 // TODO: free(el)?
@@ -251,107 +241,15 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
     return NULL;
 }
 
-indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber) {
-    zgdbIndex index = getIndex(file, childIndexNumber);
-    if (index.flag == INDEX_ALIVE) {
-        // Считываем хедер документа:
-        fseeko64(file->f, index.offset, SEEK_SET);
-        documentHeader header;
-        if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
-            return INDEX_NOT_EXIST;
-        }
-
-        /* Если номер индекса документа-родителя не совпадает с header.parentIndexNumber в документе-ребёнке, и при этом
-         * инициатор удаления - документ, а не пользователь (т.е. номер индекса документа-родителя отличен от DOCUMENT_NOT_EXIST),
-         * то нужно отменить удаление: */
-        if (parentIndexNumber != header.parentIndexNumber && parentIndexNumber != DOCUMENT_NOT_EXIST) {
-            return index.flag;
-        }
-
-        // Если header.parentIndexNumber в документе-ребёнке не равен DOCUMENT_NOT_EXIST, то обновляем информацию в родителе:
-        if (header.parentIndexNumber != DOCUMENT_NOT_EXIST) {
-            // Обновляем
-        }
-
-        // Изменяем флаг индекса документа и добавляем дырку в список:
-        if (!updateIndex(file, childIndexNumber, wrap_uint8_t(INDEX_DEAD), not_present_int64_t())) {
-            return INDEX_NOT_EXIST;
-        }
-        insertNode(&file->list, createNode(header.size, childIndexNumber));
-
-        // Удаляем детей документа:
-        for (uint64_t i = 0; i < file->header.indexCount; i++) {
-            if (i != childIndexNumber) {
-                if (removeEmbeddedDocument(file, i, childIndexNumber) == INDEX_NOT_EXIST) {
-                    return INDEX_NOT_EXIST;
-                }
-            }
-        }
-    }
-    return index.flag;
-}
-
-bool removeDocument(zgdbFile* file, documentRef* ref) {
-    bool result = false;
-    if (ref && ref->indexNumber != DOCUMENT_NOT_EXIST) {
-        result = removeEmbeddedDocument(file, ref->indexNumber, DOCUMENT_NOT_EXIST) != INDEX_NOT_EXIST;
-        ref->indexNumber = DOCUMENT_NOT_EXIST;
-    }
-    return result;
-}
-
 void printDocument(zgdbFile* file, document* doc) {
     if (doc) {
         printf("%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp, doc->header.id.offset);
         for (uint64_t i = 0; i < doc->schema->length; i++) {
             printf("\t");
-            printElement(file, doc->schema->elements[i]);
+            printElement(doc->schema->elements[i]);
         }
         printf("}\n");
     }
-}
-
-bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
-    // Если обновлять документ не надо (newValues == null), то возвращаем true:
-    printf("%d\n", indexNumber);
-    if (!newValues) {
-        return true;
-    }
-    zgdbIndex index = getIndex(file, indexNumber);
-    if (index.flag == INDEX_ALIVE) {
-        fseeko64(file->f, index.offset, SEEK_SET);
-        documentHeader header;
-        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
-            uint64_t bytesLeft = header.size - sizeof(documentHeader);
-            while (bytesLeft > 0) {
-                element oldElement;
-                uint64_t tmp = readElement(file, &oldElement, true);
-                if (!tmp) {
-                    return false;
-                }
-                // Если элемент не существует, то выходим из цикла. Иначе - обновляем элемент:
-                if (oldElement.type == TYPE_NOT_EXIST) {
-                    bytesLeft = 0;
-                } else {
-                    bytesLeft -= tmp;
-                    element* newElement = getElementFromSchema(newValues, oldElement.key);
-                    if (newElement) {
-                        fseeko64(file->f, (int64_t) -tmp, SEEK_CUR);
-                        if (newElement->type == TYPE_STRING) {
-                            updateStringElement(file, &index, &header, &oldElement, newElement);
-                        } else if (newElement->type == TYPE_EMBEDDED_DOCUMENT) {
-
-                        } else if (!writeElement(file, newElement, indexNumber)) {
-                            return false;
-                        }
-                        fseeko64(file->f, 0, SEEK_CUR); // этот вызов нужен для того, чтобы можно было сделать fread
-                    }
-                }
-            }
-            return true;
-        }
-    }
-    return false;
 }
 
 bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
@@ -360,11 +258,10 @@ bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
         return true;
     }
     // Записываем документ:
-    documentRef* ref = writeDocument(file, q->newValues, *brotherIndexNumber);
-    if (ref) {
+    opt_uint64_t ref = writeDocument(file, q->newValues, *brotherIndexNumber);
+    if (ref.isPresent) {
         // Передаём свой индекс родителю в качестве индекса последнего ребёнка:
-        *brotherIndexNumber = ref->indexNumber;
-        destroyDocumentRef(ref);
+        *brotherIndexNumber = ref.value;
         if (q->nestedQueries) {
             // Вставляем детей:
             uint64_t lastChildIndexNumber = DOCUMENT_NOT_EXIST;
@@ -397,14 +294,50 @@ bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
     return false;
 }
 
-bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues) {
-    return true;
+bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
+    // Если обновлять документ не надо (newValues == null), то возвращаем true:
+    printf("%d\n", *indexNumber);
+    if (!q->newValues) {
+        return true;
+    }
+    zgdbIndex index = getIndex(file, *indexNumber);
+    if (index.flag == INDEX_ALIVE) {
+        fseeko64(file->f, index.offset, SEEK_SET);
+        documentHeader header;
+        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+            uint64_t bytesLeft = header.size - sizeof(documentHeader);
+            while (bytesLeft > 0) {
+                element oldElement;
+                uint64_t tmp = readElement(file, &oldElement, true);
+                if (!tmp) {
+                    return false;
+                }
+                // Если элемент не существует, то выходим из цикла. Иначе - обновляем элемент:
+                if (oldElement.type == TYPE_NOT_EXIST) {
+                    bytesLeft = 0;
+                } else {
+                    bytesLeft -= tmp;
+                    element* newElement = getElementFromSchema(q->newValues, oldElement.key);
+                    if (newElement) {
+                        fseeko64(file->f, (int64_t) -tmp, SEEK_CUR);
+                        if (newElement->type == TYPE_STRING) {
+                            updateStringElement(file, &index, &header, &oldElement, newElement);
+                        } else if (!writeElement(file, newElement)) {
+                            return false;
+                        }
+                        fseeko64(file->f, 0, SEEK_CUR); // этот вызов нужен для того, чтобы можно было сделать fread
+                    }
+                }
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
-void destroyDocumentRef(documentRef* ref) {
-    if (ref) {
-        free(ref);
-    }
+bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
+    // TODO: нужен чек в removeDocument на то, что есть nestedQueries (вроде так).
+    return true;
 }
 
 element* getElementFromDocument(document* doc, const char* key) {

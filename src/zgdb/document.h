@@ -15,15 +15,10 @@ typedef struct __attribute__((packed)) documentId {
     int64_t offset; // смещение документа относительно начала файла на момент создания документа
 } documentId;
 
-struct documentRef {
-    uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
-};
-
 /* Структура для заголовка документа. */
 typedef struct __attribute__((packed)) documentHeader {
     uint64_t size : 40; // (5 байт) размер документа в байтах
     uint64_t indexNumber : 40; // (5 байт) номер индекса, прикрепленного к документу
-    uint64_t parentIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к родительскому документу
     uint64_t lastChildIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к последнему добавленному ребёнку
     uint64_t brotherIndexNumber : 40; // (5 байт) номер индекса, прикрепленного к следующему "брату" документа
     documentId id; // id, привязанный к документу
@@ -47,19 +42,21 @@ void destroyDocument(document* doc);
  * Возвращает false при неудаче. */
 bool moveFirstDocuments(zgdbFile* file);
 
-/* Функция для рекурсивного удаления вложенных документов.
- * Возвращает статус индекса, привязанного к удаляемому документу, или INDEX_NOT_EXIST (при неудаче). */
-indexFlag removeEmbeddedDocument(zgdbFile* file, uint64_t childIndexNumber, uint64_t parentIndexNumber);
-
-/* Функция для рекурсивного вывода вложенных документов. При выводе отступ соответствует уровню вложенности (nestingLevel). */
-void printEmbeddedDocument(zgdbFile* file, uint64_t i, uint64_t nestingLevel);
+/* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
+ * и записывает в них информацию об индексе добавляемого документа (родителя).
+ * Возвращает ссылку на документ или NULL (при неудаче). TODO*/
+opt_uint64_t writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber);
 
 // TODO: описание
-bool updateDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues);
+document* readDocument(zgdbFile* file, uint64_t indexNumber);
 
 // TODO: описание
-bool remDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* newValues);
-
 bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q);
+
+// TODO: описание
+bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
+
+// TODO: описание
+bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
 
 #endif

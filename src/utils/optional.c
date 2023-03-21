@@ -9,3 +9,4 @@ opt_##T wrap_##T(T value) {                         \
 
 defOptional(uint8_t)
 defOptional(int64_t)
+defOptional(uint64_t)

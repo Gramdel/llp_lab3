@@ -13,5 +13,6 @@ opt_##T wrap_##T(T value);
 
 declOptional(uint8_t)
 declOptional(int64_t)
+declOptional(uint64_t)
 
 #endif

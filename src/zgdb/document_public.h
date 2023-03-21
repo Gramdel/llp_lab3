@@ -12,34 +12,16 @@
 #include "schema_public.h"
 #include "element_public.h"
 
-/* Структура для "ссылки" на документ.
- * Фактически, обёртка для номера индекса документа в файле.*/
-typedef struct documentRef documentRef;
-
 /* Структура для загруженного в память документа */
 typedef struct document document;
-
-/* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
- * и записывает в них информацию об индексе добавляемого документа (родителя).
- * Возвращает ссылку на документ или NULL (при неудаче). TODO*/
-documentRef* writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber);
-
-document* readDocument(zgdbFile* file, uint64_t indexNumber);
-
-/* Функция для удаления документа из файла. Вне зависимости от результата, делает ссылку на документ недоступной.
- * Возвращает false при неудаче. */
-bool removeDocument(zgdbFile* file, documentRef* ref);
 
 /* Функция для вывода документа. */
 void printDocument(zgdbFile* file, document* doc);
 
-/* Функция для уничтожения ссылки на документ. С документом в файле ничего не делает! */
-void destroyDocumentRef(documentRef* ref);
-
-bool createRoot(zgdbFile* file, documentSchema* schema);
-
+// TODO: описание
 element* getElementFromDocument(document* doc, const char* key);
 
+// TODO: описание
 documentSchema* getSchemaFromDocument(document* doc);
 
 #endif

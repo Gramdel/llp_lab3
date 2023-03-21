@@ -6,7 +6,7 @@
 
 /* Типы операций. Логические операции применимы ТОЛЬКО к условиям (чтобы делать, например, нечто вроде !cond1 || cond2) */
 typedef enum operationType {
-    OP_EQ = 0, // операция "=="
+    OP_EQ, // операция "=="
     OP_NEQ, // операция "!="
     OP_GT, // операция ">"
     OP_GTE, // операция ">="
@@ -33,6 +33,6 @@ bool checkCondition(element* el, condition* cond);
 
 void resetCondition(condition* cond);
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, documentSchema* schema, condition* cond);
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond);
 
 #endif

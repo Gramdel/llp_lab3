@@ -2,7 +2,6 @@
 #include "document.h"
 
 #include <malloc.h>
-#include <string.h>
 
 iterator* createIterator() {
     iterator* it = malloc(sizeof(iterator));
@@ -23,29 +22,12 @@ void destroyIterator(iterator* it) {
     }
 }
 
-bool addRef(iterator* dest, documentRef ref) {
+bool addRef(iterator* dest, uint64_t ref) {
     if (dest) {
-        documentRef* tmp = realloc(dest->refs, sizeof(documentRef) * (dest->length + 1));
+        uint64_t* tmp = realloc(dest->refs, sizeof(uint64_t) * (dest->length + 1));
         if (tmp) {
             dest->refs = tmp;
             dest->refs[dest->length++] = ref;
-            return true;
-        }
-    }
-    return false;
-}
-
-bool addAllRefs(iterator* dest, iterator* src) {
-    if (dest && src) {
-        if (!src->length) {
-            return true;
-        }
-        documentRef* tmp = realloc(dest->refs, sizeof(documentRef) * (dest->length + src->length));
-        if (tmp) {
-            dest->refs = tmp;
-            memcpy(dest->refs + dest->length, src->refs, sizeof(documentRef) * src->length);
-            dest->length += src->length;
-            destroyIterator(src);
             return true;
         }
     }
@@ -58,7 +40,7 @@ bool hasNext(iterator* it) {
 
 document* next(zgdbFile* file, iterator* it) {
     if (hasNext(it)) {
-        return readDocument(file, it->refs[++it->curr].indexNumber);
+        return readDocument(file, it->refs[++it->curr]);
     }
     return NULL;
 }

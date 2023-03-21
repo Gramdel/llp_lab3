@@ -6,11 +6,16 @@
 
 typedef struct query query;
 
+query* selectOrDeleteQuery(const char* schemaName, condition* cond, uint64_t length, ...);
+query* insertQuery(const char* schemaName, condition* cond, documentSchema* newValues, uint64_t length, ...);
+query* updateQuery(const char* schemaName, condition* cond, documentSchema* newValues, uint64_t length, ...);
+
+// TODO: описание всего и вся!
+void destroyQuery(query* q);
+
 iterator* executeSelect(zgdbFile* file, query* q);
-iterator* executeDelete(zgdbFile* file, query* q);
-iterator* executeUpdate(zgdbFile* file, query* q);
 bool executeInsert(zgdbFile* file, query* q);
-query* selectOrDeleteQuery(documentSchema* schema, condition* cond, uint64_t length, ...);
-query* updateQuery(documentSchema* schema, condition* cond, documentSchema* newValues, uint64_t length, ...);
+bool executeUpdate(zgdbFile* file, query* q);
+bool executeDelete(zgdbFile* file, query* q);
 
 #endif
