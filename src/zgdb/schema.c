@@ -84,9 +84,6 @@ uint64_t calcDocumentSize(documentSchema* schema) {
                 size += sizeof(uint32_t); // размер строки
                 size += sizeof(char) * el->stringValue.size; // сама строка
                 break;
-            case TYPE_EMBEDDED_DOCUMENT:
-                size += 5; // uint64_t : 40 == 5 байт
-                break;
         }
     }
     return size;
