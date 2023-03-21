@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include "format.h"
 #include "schema.h"
 #include "element.h"
 

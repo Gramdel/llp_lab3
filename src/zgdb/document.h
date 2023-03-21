@@ -3,11 +3,12 @@
 
 #include <stdint.h>
 
-#include "format.h"
-#include "query.h"
+#include "format_public.h"
 #include "document_public.h"
 #include "element_public.h"
 #include "iterator_public.h"
+#include "query_public.h"
+#include "../utils/optional.h"
 
 /* Структура для id, привязанного к документу. */
 typedef struct __attribute__((packed)) documentId {
@@ -33,9 +34,6 @@ struct document {
 // TODO: описание
 document* createDocument();
 
-// TODO: описание
-void destroyDocument(document* doc);
-
 /* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
  * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
  * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
@@ -57,6 +55,6 @@ bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q);
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
 
 // TODO: описание
-bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
+bool removeDocument(zgdbFile* file, documentHeader* parentHeader, uint64_t* indexNumber, query* q);
 
 #endif

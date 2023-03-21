@@ -2,9 +2,11 @@
 #include <time.h>
 #include <string.h>
 
+#include "format.h"
 #include "document.h"
 #include "schema.h"
 #include "element.h"
+#include "query.h"
 
 document* createDocument() {
     documentSchema* schema = malloc(sizeof(documentSchema));
@@ -294,9 +296,9 @@ bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
     return false;
 }
 
+// TODO: подчистить (возможно)
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     // Если обновлять документ не надо (newValues == null), то возвращаем true:
-    printf("%d\n", *indexNumber);
     if (!q->newValues) {
         return true;
     }
@@ -335,9 +337,52 @@ bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     return false;
 }
 
-bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
-    // TODO: нужен чек в removeDocument на то, что есть nestedQueries (вроде так).
-    return true;
+bool removeDocument(zgdbFile* file, documentHeader* parentHeader, uint64_t* indexNumber, query* q) {
+    // Если не дошли до самого конца в дереве запросов, то вызывать удаление - рано!
+    if (q && q->nestedQueries) {
+        return true;
+    }
+    zgdbIndex index = getIndex(file, *indexNumber);
+    if (index.flag == INDEX_ALIVE) {
+        fseeko64(file->f, index.offset, SEEK_SET);
+        documentHeader header;
+        if (fread(&header, sizeof(documentHeader), 1, file->f)) {
+            // Удаляем детей:
+            uint64_t childIndexNumber = header.lastChildIndexNumber;
+            if (childIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, NULL, &childIndexNumber, NULL)) {
+                return false;
+            }
+            // Удаляем брата, если эта функция вызвана другой removeDocument:
+            if (!q) {
+                uint64_t brotherIndexNumber = header.brotherIndexNumber;
+                if (brotherIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, NULL, &brotherIndexNumber, NULL)) {
+                    return false;
+                }
+            }
+            /* Удаляем себя, не забыв обновить запись о корне (если были корнем), хедер родителя (если удаляется не корень)
+             * и добавить дырку в список: */
+            if (parentHeader && parentHeader->lastChildIndexNumber == *indexNumber) {
+                parentHeader->lastChildIndexNumber = header.brotherIndexNumber;
+                zgdbIndex parentIndex = getIndex(file, parentHeader->indexNumber);
+                if (parentIndex.flag != INDEX_ALIVE) {
+                    return false;
+                }
+                fseeko64(file->f, parentIndex.offset, SEEK_SET);
+                if (!fwrite(parentHeader, sizeof(documentHeader), 1, file->f)) {
+                    return false;
+                }
+            }
+            insertNode(&file->list, createNode(header.size, *indexNumber));
+            if (file->header.indexOfRoot == *indexNumber) {
+                file->header.indexOfRoot = DOCUMENT_NOT_EXIST;
+                if (!writeHeader(file)) {
+                    return false;
+                }
+            }
+            return updateIndex(file, *indexNumber, wrap_uint8_t(INDEX_DEAD), not_present_int64_t());
+        }
+    }
+    return false;
 }
 
 element* getElementFromDocument(document* doc, const char* key) {

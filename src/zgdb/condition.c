@@ -1,6 +1,7 @@
 #include <string.h>
 #include <malloc.h>
 
+#include "format.h"
 #include "condition.h"
 #include "element.h"
 #include "schema.h"

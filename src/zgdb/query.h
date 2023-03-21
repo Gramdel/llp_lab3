@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "query_public.h"
+#include "document.h"
 
 typedef enum queryType {
     SELECT_QUERY,
@@ -15,15 +16,20 @@ typedef enum queryType {
 } queryType;
 
 struct query {
+    queryType type; // тип запроса
+    const char* schemaName; // имя требуемой схемы
+    documentSchema* newValues;  // указатель на схему, в которой хранятся новые значения
+    condition* cond; // условие(я)
     query** nestedQueries; // массив указателей на вложенные запросы
     uint64_t length; // длина массива вложенных запросов
-    const char* schemaName; // имя требуемой схемы
-    condition* cond; // условие(я)
-    queryType type; // тип запроса
-    documentSchema* newValues;  // указатель на схему, в которой хранятся новые значения
 };
+
+query* createQuery(queryType type, const char* schemaName, documentSchema* newValues, condition* cond);
 
 // TODO: описание
 bool find(zgdbFile* file, iterator* it, uint64_t indexNumber, query* q, bool (* mutate)(zgdbFile*, uint64_t*, query*));
+
+bool findAndMutate(zgdbFile* file, iterator* it, documentHeader* parentHeader, uint64_t indexNumber, query* q,
+                   bool (* mutate)(zgdbFile*, documentHeader*, uint64_t*, query*));
 
 #endif

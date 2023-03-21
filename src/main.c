@@ -1,6 +1,6 @@
 ﻿#include <stdio.h>
 #include <malloc.h>
-#include "zgdb/document.h"
+#include "zgdb/document_public.h"
 #include "zgdb/query_public.h"
 
 int main(int argc, char** argv) {
@@ -45,6 +45,34 @@ int main(int argc, char** argv) {
     */
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
 
+    query* insert = createInsertQuery(NULL, rootSchema, NULL);
+    if (insert) {
+        query* insertChild = createInsertQuery(NULL, childSchema, NULL);
+        addNestedQuery(insertChild, createInsertQuery(NULL, grandChildSchema, NULL));
+        addNestedQuery(insert, insertChild);
+    }
+
+    query* select = createSelectQuery("root", NULL);
+    if (insert) {
+        query* selectChild = createSelectQuery("child", NULL);
+        addNestedQuery(selectChild, createSelectQuery("grandChild", NULL));
+        addNestedQuery(select, selectChild);
+        addNestedQuery(select, createSelectQuery("child", NULL));
+    }
+
+    query* update = createUpdateQuery("root", newRootSchema, NULL);
+    if (update) {
+        query* updateChild = createUpdateQuery("child", newChildSchema, NULL);
+        addNestedQuery(updateChild, createUpdateQuery("grandChild", newGrandChildSchema, NULL));
+        addNestedQuery(update, updateChild);
+    }
+
+    query* delete = createDeleteQuery("root", NULL);
+    if (delete) {
+        addNestedQuery(delete, createDeleteQuery("child", NULL));
+    }
+
+    /*
     query* insert = insertQuery(NULL, NULL, rootSchema,1,
                                 insertQuery(NULL, NULL, childSchema, 1,
                                             insertQuery(NULL, NULL, grandChildSchema, 0)),
@@ -59,9 +87,10 @@ int main(int argc, char** argv) {
                                                 selectOrDeleteQuery("child", cond, 1,
                                                                     selectOrDeleteQuery("grandChild", cond, 0)),
                                                 selectOrDeleteQuery("child", NULL, 0));
+   */
 
     printf(executeInsert(file, insert) ? "true\n" : "false\n");
-    iterator* it = executeSelect(file, selectOrDelete);
+    iterator* it = executeSelect(file, select);
     while (hasNext(it)) {
         document* doc = next(file, it);
         printDocument(file, doc);
@@ -70,7 +99,16 @@ int main(int argc, char** argv) {
     destroyIterator(it);
 
     printf(executeUpdate(file, update) ? "true\n" : "false\n");
-    it = executeSelect(file, selectOrDelete);
+    it = executeSelect(file, select);
+    while (hasNext(it)) {
+        document* doc = next(file, it);
+        printDocument(file, doc);
+        destroyDocument(doc);
+    }
+    destroyIterator(it);
+
+    printf(executeDelete(file, delete) ? "true\n" : "false\n");
+    it = executeSelect(file, select);
     while (hasNext(it)) {
         document* doc = next(file, it);
         printDocument(file, doc);

@@ -15,6 +15,9 @@
 /* Структура для загруженного в память документа */
 typedef struct document document;
 
+// TODO: описание
+void destroyDocument(document* doc);
+
 /* Функция для вывода документа. */
 void printDocument(zgdbFile* file, document* doc);
 
