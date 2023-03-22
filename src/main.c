@@ -101,18 +101,18 @@ int main(int argc, char** argv) {
     }
     destroyIterator(it);
 
-    /*
-    //printf(executeUpdate(file, &error,update) ? "true\n" : "false\n");
-    executeSelect(file, &error, &it, selectRoot);
+
+    printf(executeUpdate(file, &error,update) ? "true\n" : "false\n");
+    executeSelect(file, &error, &it, select);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        //printDocument(doc);
-        printDocumentAsTree(file, doc);
+        printDocument(doc);
+        //printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
 
-    //printf(executeDelete(file, &error, delete) ? "true\n" : "false\n");
+    printf(executeDelete(file, &error, delete) ? "true\n" : "false\n");
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);

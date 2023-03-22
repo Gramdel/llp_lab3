@@ -148,7 +148,7 @@ bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNum
             }
             // Потом выполняем вложенные запросы для каждого из детей:
             for (uint64_t i = 0; i < q->length; i++) {
-                if (q->type == INSERT_QUERY && !q->nestedQueries[i]->newValues) {
+                if (q->type != INSERT_QUERY || !q->nestedQueries[i]->newValues) {
                     bool atLeastOneFound = false;
                     uint64_t childIndexNumber = header.lastChildIndexNumber;
                     while (childIndexNumber != DOCUMENT_NOT_EXIST) {
