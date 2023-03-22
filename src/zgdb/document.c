@@ -258,26 +258,26 @@ void printDocument(document* doc) {
 
 void printTree(zgdbFile* file, documentHeader header, uint64_t nestingLevel) {
     printf("%*s%s#%08X%016X", nestingLevel, "", header.schemaName, header.id.timestamp, header.id.offset);
-    uint64_t childIndexNumber = header.lastChildIndexNumber;
-    while (childIndexNumber != DOCUMENT_NOT_EXIST) {
+    if (header.lastChildIndexNumber != DOCUMENT_NOT_EXIST) {
         printf(" {\n");
-        zgdbIndex childIndex = getIndex(file, childIndexNumber);
-        if (childIndex.flag == INDEX_ALIVE) {
-            fseeko64(file->f, childIndex.offset, SEEK_SET);
-            documentHeader childHeader;
-            if (fread(&childHeader, sizeof(documentHeader), 1, file->f)) {
-                printTree(file, childHeader, nestingLevel + 4);
-                childIndexNumber = childHeader.brotherIndexNumber;
-                continue;
+        uint64_t childIndexNumber = header.lastChildIndexNumber;
+        do {
+            zgdbIndex childIndex = getIndex(file, childIndexNumber);
+            if (childIndex.flag == INDEX_ALIVE) {
+                fseeko64(file->f, childIndex.offset, SEEK_SET);
+                documentHeader childHeader;
+                if (fread(&childHeader, sizeof(documentHeader), 1, file->f)) {
+                    printTree(file, childHeader, nestingLevel + 4);
+                    childIndexNumber = childHeader.brotherIndexNumber;
+                    continue;
+                }
             }
-        }
-        printf("%*sAn error occurred!\n", nestingLevel, "");
-        break;
-    }
-    if (header.lastChildIndexNumber == DOCUMENT_NOT_EXIST) {
-        printf("\n");
-    } else {
+            printf("%*sAn error occurred!\n", nestingLevel, "");
+            break;
+        } while (childIndexNumber != DOCUMENT_NOT_EXIST);
         printf("%*s}\n", nestingLevel, "");
+    } else {
+        printf("\n");
     }
 }
 
@@ -290,45 +290,47 @@ void printDocumentAsTree(zgdbFile* file, document* doc) {
 }
 
 bool insertDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
-    // Если вставлять документ не надо (нет новой схемы), то возвращаем true. Иначе - рекурсивно вставляем документы:
-    if (!q->newValues) {
-        return true;
-    }
-    // Записываем документ:
-    opt_uint64_t ref = writeDocument(file, q->newValues, *indexNumber);
-    if (ref.isPresent) {
-        // Передаём свой индекс родителю в качестве индекса последнего ребёнка:
-        *indexNumber = ref.value;
-        if (q->nestedQueries) {
-            // Вставляем детей:
-            uint64_t lastChildIndexNumber = DOCUMENT_NOT_EXIST;
-            for (uint64_t i = 0; i < q->length; i++) {
-                if (!insertDocument(file, &lastChildIndexNumber, q->nestedQueries[i])) {
-                    return false;
-                }
+    // Если вставлять документ не надо (нет новой схемы), то возвращаем true:
+    if (q->newValues) {
+        // Записываем документ:
+        opt_uint64_t ref;
+        if (*indexNumber != DOCUMENT_NOT_EXIST) {
+            // Считываем заголовок родителя:
+            zgdbIndex parentIndex = getIndex(file, *indexNumber);
+            documentHeader parentHeader;
+            if (parentIndex.flag != INDEX_ALIVE) {
+                return false;
             }
-            // Спускаемся в добавленный документ:
-            zgdbIndex index = getIndex(file, *indexNumber);
-            if (index.flag == INDEX_ALIVE) {
-                // Считываем заголовок добавленного документа:
-                fseeko64(file->f, index.offset, SEEK_SET);
-                documentHeader header;
-                if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
-                    return false;
-                }
-                // Перезаписываем индекс последнего ребёнка:
-                header.lastChildIndexNumber = lastChildIndexNumber;
-                fseeko64(file->f, -(int64_t) sizeof(documentHeader), SEEK_CUR);
-                if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
-                    return false;
-                }
-                return true;
+            fseeko64(file->f, parentIndex.offset, SEEK_SET);
+            if (!fread(&parentHeader, sizeof(documentHeader), 1, file->f)) {
+                return false;
             }
-            return false;
+            // Записываем документ:
+            ref = writeDocument(file, q->newValues, parentHeader.lastChildIndexNumber);
+            if (!ref.isPresent) {
+                return false;
+            }
+            // Считываем индекс заново, поскольку родитель мог переместиться:
+            parentIndex = getIndex(file, *indexNumber);
+            if (parentIndex.flag != INDEX_ALIVE) {
+                return false;
+            }
+            // Перезаписываем последнего ребёнка в заголовке родителя:
+            parentHeader.lastChildIndexNumber = ref.value;
+            fseeko64(file->f, parentIndex.offset, SEEK_SET);
+            if (!fwrite(&parentHeader, sizeof(documentHeader), 1, file->f)) {
+                return false;
+            }
+        } else {
+            // Если не указан родитель, то сразу добавляем:
+            ref = writeDocument(file, q->newValues, *indexNumber);
+            if (!ref.isPresent) {
+                return false;
+            }
         }
-        return true;
+        *indexNumber = ref.value;
     }
-    return false;
+    return true;
 }
 
 // TODO: подчистить (возможно)

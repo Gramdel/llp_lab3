@@ -45,12 +45,19 @@ int main(int argc, char** argv) {
     */
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
 
-    //query* insert = createInsertQuery(NULL, rootSchema, NULL);
-    query* insert = createInsertQuery("root", NULL, NULL);
+    query* insert = createInsertQuery(NULL, rootSchema, NULL);
     if (insert) {
         query* insertChild = createInsertQuery(NULL, childSchema, NULL);
         addNestedQuery(insertChild, createInsertQuery(NULL, grandChildSchema, NULL));
         addNestedQuery(insert, insertChild);
+    }
+
+    query* insert2 = createInsertQuery("root", NULL, NULL);
+    if (insert2) {
+        query* insertChild = createInsertQuery("child", NULL, NULL);
+        addNestedQuery(insertChild, createInsertQuery(NULL, grandChildSchema, NULL));
+        addNestedQuery(insert2, insertChild);
+        addNestedQuery(insert2, createInsertQuery(NULL, childSchema, NULL));
     }
 
     query* select = createSelectQuery("root", NULL);
@@ -84,6 +91,17 @@ int main(int argc, char** argv) {
     }
     destroyIterator(it);
 
+    printf(executeInsert(file, &error, insert2) ? "true\n" : "false\n");
+    executeSelect(file, &error, &it, selectRoot);
+    while (hasNext(it)) {
+        document* doc = next(file, it);
+        //printDocument(doc);
+        printDocumentAsTree(file, doc);
+        destroyDocument(doc);
+    }
+    destroyIterator(it);
+
+    /*
     //printf(executeUpdate(file, &error,update) ? "true\n" : "false\n");
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
