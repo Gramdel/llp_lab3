@@ -289,43 +289,16 @@ void printDocumentAsTree(zgdbFile* file, document* doc) {
     }
 }
 
-bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q) {
-    // Если вставлять документ не надо (нет новой схемы), то возвращаем true. Иначе - рекурсивно вставляем документы:
+bool insertDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
+    // Если вставлять документ не надо (нет новой схемы), то возвращаем true:
     if (!q->newValues) {
         return true;
     }
     // Записываем документ:
-    opt_uint64_t ref = writeDocument(file, q->newValues, *brotherIndexNumber);
+    opt_uint64_t ref = writeDocument(file, q->newValues, *indexNumber);
     if (ref.isPresent) {
-        // Передаём свой индекс родителю в качестве индекса последнего ребёнка:
-        *brotherIndexNumber = ref.value;
-        if (q->nestedQueries) {
-            // Вставляем детей:
-            uint64_t lastChildIndexNumber = DOCUMENT_NOT_EXIST;
-            for (uint64_t i = 0; i < q->length; i++) {
-                if (!insertDocument(file, &lastChildIndexNumber, q->nestedQueries[i])) {
-                    return false;
-                }
-            }
-            // Спускаемся в добавленный документ (нового родителя):
-            zgdbIndex index = getIndex(file, *brotherIndexNumber);
-            if (index.flag == INDEX_ALIVE) {
-                // Считываем заголовок добавленного документа:
-                fseeko64(file->f, index.offset, SEEK_SET);
-                documentHeader header;
-                if (!fread(&header, sizeof(documentHeader), 1, file->f)) {
-                    return false;
-                }
-                // Перезаписываем индекс последнего ребёнка:
-                header.lastChildIndexNumber = lastChildIndexNumber;
-                fseeko64(file->f, -(int64_t) sizeof(documentHeader), SEEK_CUR);
-                if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
-                    return false;
-                }
-                return true;
-            }
-            return false;
-        }
+        // Передаём свой индекс родителю:
+        *indexNumber = ref.value;
         return true;
     }
     return false;
@@ -337,6 +310,7 @@ bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     if (!q->newValues) {
         return true;
     }
+    // Обновляем документ:
     zgdbIndex index = getIndex(file, *indexNumber);
     if (index.flag == INDEX_ALIVE) {
         fseeko64(file->f, index.offset, SEEK_SET);

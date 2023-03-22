@@ -128,12 +128,13 @@ bool executeDelete(zgdbFile* file, bool* error, query* q) {
 
 bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNumber, query* q,
                    bool (* mutate)(zgdbFile*, uint64_t*, query*)) {
-    bool match = checkDocument(file, *indexNumber, q->schemaName, q->cond);
+    bool match = checkDocument(file, *indexNumber, q);
     resetCondition(q->cond); // сброс cond.met
-    if (match && (q->type == SELECT_QUERY || mutate(file, indexNumber, q))) {
-        // Если выше было вызвано рекурсивное добавление новых документов, то всё уже добавлено. Можно выходить:
-        if (!q->schemaName) {
-            return true;
+    if (match) {
+        // Если мутация не удалась, то это ошибка:
+        if (q->type != SELECT_QUERY && !mutate(file, indexNumber, q)) {
+            *error = true;
+            return false;
         }
         // Если есть вложенные query, продолжаем рекурсию; иначе - добавляем в итератор текущий индекс (в случае select):
         if (q->nestedQueries) {
@@ -149,49 +150,77 @@ bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNum
                 *error = true;
                 return false;
             }
-            // Потом выполняем вложенные запросы для каждого из детей:
+            // Потом выполняем вложенные запросы:
             for (uint64_t i = 0; i < q->length; i++) {
+                /* Если начинается вставка (не указано имя схемы документа, в которую надо спуститься), то на детей не
+                 * смотрим. Иначе, если вставка не начинается на уровень ниже, то идём по детям дальше. Сделано так,
+                 * потому что в checkDocument невозможно понять, чей номер индекса пришёл - родителя или брата. */
                 bool atLeastOneFound = false;
                 uint64_t childIndexNumber = header.lastChildIndexNumber;
-                while (childIndexNumber != DOCUMENT_NOT_EXIST) {
-                    // Выбираем следующего ребёнка (заранее, поскольку текущий ребёнок может удалиться):
-                    zgdbIndex childIndex = getIndex(file, childIndexNumber);
-                    if (childIndex.flag != INDEX_ALIVE) {
-                        *error = true;
-                        return false;
-                    }
-                    fseeko64(file->f, childIndex.offset, SEEK_SET);
-                    documentHeader childHeader;
-                    if (!fread(&childHeader, sizeof(documentHeader), 1, file->f)) {
-                        *error = true;
-                        return false;
-                    }
-                    // Выполняем запрос:
+                if (q->type == INSERT_QUERY && !q->schemaName) {
                     atLeastOneFound |= findAndMutate(file, error, it, &childIndexNumber, q->nestedQueries[i], mutate);
                     if (*error) {
                         return false;
                     }
-                    /* При успешном вызове removeDocument в childIndexNumber передаётся DOCUMENT_NOT_EXIST.
-                     * В этом случае надо перезаписать заголовок родителя: */
-                    if (q->type == DELETE_QUERY && childIndexNumber == DOCUMENT_NOT_EXIST) {
-                        header.lastChildIndexNumber = childHeader.brotherIndexNumber;
-                        fseeko64(file->f, index.offset, SEEK_SET);
-                        if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                    /* При успешном вызове insertDocument в childIndexNumber передаётся индекс добавленного ребёнка.
+                     * В этом случае надо перезаписать заголовок родителя. Не забываем заново считать индекс родителя,
+                     * поскольку он мог быть перемещён: */
+                    index = getIndex(file, *indexNumber);
+                    if (index.flag != INDEX_ALIVE) {
+                        *error = true;
+                        return false;
+                    }
+                    header.lastChildIndexNumber = childIndexNumber;
+                    fseeko64(file->f, index.offset, SEEK_SET);
+                    if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                        *error = true;
+                        return false;
+                    }
+                } else if (q->nestedQueries[i]->schemaName) {
+                    while (childIndexNumber != DOCUMENT_NOT_EXIST) {
+                        // Выбираем следующего ребёнка (заранее, поскольку текущий ребёнок может удалиться):
+                        zgdbIndex childIndex = getIndex(file, childIndexNumber);
+                        if (childIndex.flag != INDEX_ALIVE) {
                             *error = true;
                             return false;
                         }
+                        fseeko64(file->f, childIndex.offset, SEEK_SET);
+                        documentHeader childHeader;
+                        if (!fread(&childHeader, sizeof(documentHeader), 1, file->f)) {
+                            *error = true;
+                            return false;
+                        }
+                        // Выполняем запрос:
+                        atLeastOneFound |= findAndMutate(file, error, it, &childIndexNumber, q->nestedQueries[i],
+                                                         mutate);
+                        if (*error) {
+                            return false;
+                        }
+                        /* При успешном вызове removeDocument в childIndexNumber передаётся DOCUMENT_NOT_EXIST.
+                         * В этом случае надо перезаписать заголовок родителя: */
+                        if (q->type == DELETE_QUERY && childIndexNumber == DOCUMENT_NOT_EXIST) {
+                            header.lastChildIndexNumber = childHeader.brotherIndexNumber;
+                            fseeko64(file->f, index.offset, SEEK_SET);
+                            if (!fwrite(&header, sizeof(documentHeader), 1, file->f)) {
+                                *error = true;
+                                return false;
+                            }
+                        }
+                        // Берём следующего ребёнка (т.е. брата текущего):
+                        childIndexNumber = childHeader.brotherIndexNumber;
                     }
-                    // Берём следующего ребёнка (т.е. брата текущего):
-                    childIndexNumber = childHeader.brotherIndexNumber;
+                } else {
+                    return true;
                 }
-                // Если ни один из детей не подошёл, то возвращаем false:
+                // Если ни один из детей не подошёл, то возвращаем false (но это не ошибка!):
                 if (!atLeastOneFound) {
                     return false;
                 }
             }
             return true;
-        } else if (!mutate) {
-            return addRef(it, *indexNumber);
+        } else if (q->type == SELECT_QUERY && !addRef(it, *indexNumber)) {
+            *error = true;
+            return false;
         }
         return true;
     }

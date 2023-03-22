@@ -5,6 +5,7 @@
 #include "condition.h"
 #include "element.h"
 #include "schema.h"
+#include "query.h"
 
 condition* createCondition(operationType type, void* operand1, void* operand2) {
     condition* cond = NULL;
@@ -124,9 +125,9 @@ bool checkCondition(element* el, condition* cond) {
     return result;
 }
 
-bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName, condition* cond) {
+bool checkDocument(zgdbFile* file, uint64_t indexNumber, query* q) {
     // Если название схемы не указано, то это говорит о том, что документ ещё не создан. Возвращаем true:
-    if (!schemaName) {
+    if (q->type == INSERT_QUERY && !q->schemaName) {
         return true;
     }
     // Если название указано, то находим индекс и проверяем документ:
@@ -136,9 +137,9 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName,
             fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
             documentHeader header;
             // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
-            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(schemaName, header.schemaName)) {
+            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(q->schemaName, header.schemaName)) {
                 // Если условие не указано, то соответствия схемы достаточно:
-                if (!cond) {
+                if (!q->cond) {
                     return true;
                 }
                 uint64_t bytesRead = sizeof(documentHeader);
@@ -153,10 +154,10 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, const char* schemaName,
                         bytesRead = header.size;
                     } else {
                         bytesRead += tmp;
-                        checkCondition(&el, cond);
+                        checkCondition(&el, q->cond);
                     }
                 }
-                return cond->isMet;
+                return q->cond->isMet;
             }
         }
     }

@@ -51,7 +51,7 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber);
 void printTree(zgdbFile* file, documentHeader header, uint64_t nestingLevel);
 
 // TODO: описание
-bool insertDocument(zgdbFile* file, uint64_t* brotherIndexNumber, query* q);
+bool insertDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
 
 // TODO: описание
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
