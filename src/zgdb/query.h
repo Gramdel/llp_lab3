@@ -27,9 +27,8 @@ struct query {
 query* createQuery(queryType type, const char* schemaName, documentSchema* newValues, condition* cond);
 
 // TODO: описание
-bool find(zgdbFile* file, iterator* it, uint64_t indexNumber, query* q, bool (* mutate)(zgdbFile*, uint64_t*, query*));
 
-bool findAndMutate(zgdbFile* file, iterator* it, documentHeader* parentHeader, uint64_t indexNumber, query* q,
-                   bool (* mutate)(zgdbFile*, documentHeader*, uint64_t*, query*));
+bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNumber, query* q,
+                   bool (* mutate)(zgdbFile*, uint64_t*, query*));
 
 #endif

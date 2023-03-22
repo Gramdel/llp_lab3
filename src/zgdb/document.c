@@ -243,7 +243,7 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
     return NULL;
 }
 
-void printDocument(zgdbFile* file, document* doc) {
+void printDocument(document* doc) {
     if (doc) {
         printf("%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp, doc->header.id.offset);
         for (uint64_t i = 0; i < doc->schema->length; i++) {
@@ -251,6 +251,41 @@ void printDocument(zgdbFile* file, document* doc) {
             printElement(doc->schema->elements[i]);
         }
         printf("}\n");
+    } else {
+        printf("Document doesn't exist!\n");
+    }
+}
+
+void printTree(zgdbFile* file, documentHeader header, uint64_t nestingLevel) {
+    printf("%*s%s#%08X%016X", nestingLevel, "", header.schemaName, header.id.timestamp, header.id.offset);
+    uint64_t childIndexNumber = header.lastChildIndexNumber;
+    while (childIndexNumber != DOCUMENT_NOT_EXIST) {
+        printf(" {\n");
+        zgdbIndex childIndex = getIndex(file, childIndexNumber);
+        if (childIndex.flag == INDEX_ALIVE) {
+            fseeko64(file->f, childIndex.offset, SEEK_SET);
+            documentHeader childHeader;
+            if (fread(&childHeader, sizeof(documentHeader), 1, file->f)) {
+                printTree(file, childHeader, nestingLevel + 4);
+                childIndexNumber = childHeader.brotherIndexNumber;
+                continue;
+            }
+        }
+        printf("%*sAn error occurred!\n", nestingLevel, "");
+        break;
+    }
+    if (header.lastChildIndexNumber == DOCUMENT_NOT_EXIST) {
+        printf("\n");
+    } else {
+        printf("%*s}\n", nestingLevel, "");
+    }
+}
+
+void printDocumentAsTree(zgdbFile* file, document* doc) {
+    if (doc) {
+        printTree(file, doc->header, 0);
+    } else {
+        printf("Document doesn't exist!\n");
     }
 }
 
@@ -337,7 +372,7 @@ bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     return false;
 }
 
-bool removeDocument(zgdbFile* file, documentHeader* parentHeader, uint64_t* indexNumber, query* q) {
+bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     // Если не дошли до самого конца в дереве запросов, то вызывать удаление - рано!
     if (q && q->nestedQueries) {
         return true;
@@ -349,37 +384,31 @@ bool removeDocument(zgdbFile* file, documentHeader* parentHeader, uint64_t* inde
         if (fread(&header, sizeof(documentHeader), 1, file->f)) {
             // Удаляем детей:
             uint64_t childIndexNumber = header.lastChildIndexNumber;
-            if (childIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, NULL, &childIndexNumber, NULL)) {
+            if (childIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, &childIndexNumber, NULL)) {
                 return false;
             }
             // Удаляем брата, если эта функция вызвана другой removeDocument:
             if (!q) {
                 uint64_t brotherIndexNumber = header.brotherIndexNumber;
-                if (brotherIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, NULL, &brotherIndexNumber, NULL)) {
+                if (brotherIndexNumber != DOCUMENT_NOT_EXIST && !removeDocument(file, &brotherIndexNumber, NULL)) {
                     return false;
                 }
             }
-            /* Удаляем себя, не забыв обновить запись о корне (если были корнем), хедер родителя (если удаляется не корень)
-             * и добавить дырку в список: */
-            if (parentHeader && parentHeader->lastChildIndexNumber == *indexNumber) {
-                parentHeader->lastChildIndexNumber = header.brotherIndexNumber;
-                zgdbIndex parentIndex = getIndex(file, parentHeader->indexNumber);
-                if (parentIndex.flag != INDEX_ALIVE) {
-                    return false;
-                }
-                fseeko64(file->f, parentIndex.offset, SEEK_SET);
-                if (!fwrite(parentHeader, sizeof(documentHeader), 1, file->f)) {
-                    return false;
-                }
-            }
+            // Добавляем дырку в список:
             insertNode(&file->list, createNode(header.size, *indexNumber));
+            // Если являлись корнем, то обновляем заголовок файла:
             if (file->header.indexOfRoot == *indexNumber) {
                 file->header.indexOfRoot = DOCUMENT_NOT_EXIST;
                 if (!writeHeader(file)) {
                     return false;
                 }
             }
-            return updateIndex(file, *indexNumber, wrap_uint8_t(INDEX_DEAD), not_present_int64_t());
+            // Обновляем индекс:
+            if (!updateIndex(file, *indexNumber, wrap_uint8_t(INDEX_DEAD), not_present_int64_t())) {
+                return false;
+            }
+            *indexNumber = DOCUMENT_NOT_EXIST;
+            return true;
         }
     }
     return false;

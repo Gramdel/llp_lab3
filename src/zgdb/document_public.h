@@ -18,8 +18,11 @@ typedef struct document document;
 // TODO: описание
 void destroyDocument(document* doc);
 
-/* Функция для вывода документа. */
-void printDocument(zgdbFile* file, document* doc);
+/* Функция для обычного вывода документа. Выводит поля и их значения. */
+void printDocument(document* doc);
+
+/* Функция для вывода документа как дерева. Выводит вложенные документы. */
+void printDocumentAsTree(zgdbFile* file, document* doc);
 
 // TODO: описание
 element* getElementFromDocument(document* doc, const char* key);

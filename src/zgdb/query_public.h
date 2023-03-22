@@ -20,12 +20,12 @@ void destroyQuery(query* q);
 
 bool addNestedQuery(query* q, query* nq);
 
-iterator* executeSelect(zgdbFile* file, query* q);
+bool executeSelect(zgdbFile* file, bool* error, iterator** it, query* q);
 
-bool executeInsert(zgdbFile* file, query* q);
+bool executeInsert(zgdbFile* file, bool* error, query* q);
 
-bool executeUpdate(zgdbFile* file, query* q);
+bool executeUpdate(zgdbFile* file, bool* error, query* q);
 
-bool executeDelete(zgdbFile* file, query* q);
+bool executeDelete(zgdbFile* file, bool* error, query* q);
 
 #endif

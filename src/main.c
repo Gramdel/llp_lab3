@@ -60,7 +60,9 @@ int main(int argc, char** argv) {
         addNestedQuery(select, createSelectQuery("child", NULL));
     }
 
-    query* update = createUpdateQuery("root", newRootSchema, NULL);
+    query* selectRoot = createSelectQuery("root", NULL);
+
+    query* update = createUpdateQuery("root", NULL, NULL);
     if (update) {
         query* updateChild = createUpdateQuery("child", newChildSchema, NULL);
         addNestedQuery(updateChild, createUpdateQuery("grandChild", newGrandChildSchema, NULL));
@@ -68,50 +70,35 @@ int main(int argc, char** argv) {
     }
 
     query* delete = createDeleteQuery("root", NULL);
-    if (delete) {
-        addNestedQuery(delete, createDeleteQuery("child", NULL));
-    }
 
-    /*
-    query* insert = insertQuery(NULL, NULL, rootSchema,1,
-                                insertQuery(NULL, NULL, childSchema, 1,
-                                            insertQuery(NULL, NULL, grandChildSchema, 0)),
-                                insertQuery(NULL, NULL, childSchema, 0));
-
-    query* update = updateQuery("root", NULL, newRootSchema,2,
-                                updateQuery("child", cond, NULL, 1,
-                                            updateQuery("grandChild", cond, newGrandChildSchema, 0)),
-                                updateQuery("child", cond, newChildSchema, 0));
-
-    query* selectOrDelete = selectOrDeleteQuery("root", NULL, 2,
-                                                selectOrDeleteQuery("child", cond, 1,
-                                                                    selectOrDeleteQuery("grandChild", cond, 0)),
-                                                selectOrDeleteQuery("child", NULL, 0));
-   */
-
-    printf(executeInsert(file, insert) ? "true\n" : "false\n");
-    iterator* it = executeSelect(file, select);
+    bool error;
+    printf(executeInsert(file, &error, insert) ? "true\n" : "false\n");
+    iterator* it = NULL;
+    executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        printDocument(file, doc);
+        //printDocument(doc);
+        printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
 
-    printf(executeUpdate(file, update) ? "true\n" : "false\n");
-    it = executeSelect(file, select);
+    printf(executeUpdate(file, &error,update) ? "true\n" : "false\n");
+    executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        printDocument(file, doc);
+        //printDocument(doc);
+        printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
 
-    printf(executeDelete(file, delete) ? "true\n" : "false\n");
-    it = executeSelect(file, select);
+    printf(executeDelete(file, &error, delete) ? "true\n" : "false\n");
+    executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        printDocument(file, doc);
+        //printDocument(doc);
+        printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
