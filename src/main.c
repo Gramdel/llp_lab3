@@ -13,36 +13,46 @@ int main(int argc, char** argv) {
         }
     }
 
-    documentSchema* grandChildSchema = createSchema("grandChild", 3,
-                                                    intElement("grChildInt1", 123),
-                                                    intElement("grChildInt2", 456),
-                                                    intElement("grChildInt3", 789));
+    documentSchema* rootSchema = createSchema("root"); // length
+    if (rootSchema) {
+        addElementToSchema(rootSchema, intElement("rootInt1", 123));
+        addElementToSchema(rootSchema, intElement("rootInt2", 456));
+        addElementToSchema(rootSchema, intElement("rootInt3", 789));
+        addElementToSchema(rootSchema, booleanElement("isFirst", true));
+        addElementToSchema(rootSchema, doubleElement("rootDouble", 128.128));
+        addElementToSchema(rootSchema, stringElement("rootString", ""));
+    }
 
-    documentSchema* newGrandChildSchema = createSchema("grandChild", 2,
-                                                    intElement("grChildInt1", 505),
-                                                    intElement("grChildInt3", 987));
+    documentSchema* childSchema = createSchema("child");
+    if (childSchema) {
+        addElementToSchema(childSchema, intElement("grChildInt1", 111));
+        addElementToSchema(childSchema, intElement("grChildInt2", 222));
+    }
 
-    documentSchema* childSchema = createSchema("child", 2,
-                                               intElement("childInt1", 111),
-                                               intElement("childInt2", 222));
+    documentSchema* grandChildSchema = createSchema("grandChild");
+    if (grandChildSchema) {
+        addElementToSchema(grandChildSchema, intElement("grChildInt1", 123));
+        addElementToSchema(grandChildSchema, intElement("grChildInt2", 456));
+        addElementToSchema(grandChildSchema, intElement("grChildInt3", 789));
+    }
 
-    documentSchema* newChildSchema = createSchema("child", 2,
-                                               intElement("childInt1", 121),
-                                               intElement("childInt2", 212));
+    documentSchema* newRootValues = createSchema("root");
+    if (newRootValues) {
+        addElementToSchema(newRootValues, stringElement("rootString", "HEY BITCH!"));
+    }
 
-    documentSchema* rootSchema = createSchema("root", 6,
-                                              intElement("rootInt1", 123),
-                                              intElement("rootInt2", 456),
-                                              intElement("rootInt3", 789),
-                                              booleanElement("isFirst", true),
-                                              doubleElement("rootDouble", 128.128),
-                                              stringElement("rootString", "I AM ROOT"));
+    documentSchema* newChildValues = createElements();
+    if (childSchema) {
+        addElementToSchema(newChildValues, intElement("childInt1", 121));
+        addElementToSchema(newChildValues, intElement("childInt1", 212));
+    }
 
-    documentSchema* newRootSchema = createSchema("root", 1, stringElement("rootString", "HEY BITCH!"));
-    /*
+    documentSchema* newGrandChildValues = createElements();
+    if (grandChildSchema) {
+        addElementToSchema(newGrandChildValues, intElement("grChildInt1", 505));
+        addElementToSchema(newGrandChildValues, intElement("grChildInt3", 987));
+    }
 
-    createRoot(file, rootSchema);
-    */
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
 
     query* insert = createInsertQuery(NULL, rootSchema, NULL);
@@ -72,8 +82,8 @@ int main(int argc, char** argv) {
 
     query* update = createUpdateQuery("root", NULL, NULL);
     if (update) {
-        query* updateChild = createUpdateQuery("child", newChildSchema, NULL);
-        addNestedQuery(updateChild, createUpdateQuery("grandChild", newGrandChildSchema, NULL));
+        query* updateChild = createUpdateQuery("child", newChildValues, NULL);
+        addNestedQuery(updateChild, createUpdateQuery("grandChild", newGrandChildValues, NULL));
         addNestedQuery(update, updateChild);
     }
 
@@ -85,7 +95,6 @@ int main(int argc, char** argv) {
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        //printDocument(doc);
         printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
@@ -95,14 +104,13 @@ int main(int argc, char** argv) {
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        //printDocument(doc);
         printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
 
 
-    printf(executeUpdate(file, &error,update) ? "true\n" : "false\n");
+    printf(executeUpdate(file, &error, update) ? "true\n" : "false\n");
     executeSelect(file, &error, &it, select);
     while (hasNext(it)) {
         document* doc = next(file, it);
@@ -116,20 +124,10 @@ int main(int argc, char** argv) {
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
-        //printDocument(doc);
         printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
-
-    /*
-    iterator* it3 = executeDelete(file, selectOrDelete);
-    while (hasNext(it3)) {
-        document* doc = next(file, it3);
-        printDocument(file, doc);
-        destroyDocument(doc);
-    }
-    */
 
     destroySchema(rootSchema);
 

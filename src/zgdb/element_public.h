@@ -5,7 +5,6 @@
 #include <stdbool.h>
 
 #include "format_public.h"
-#include "schema_public.h"
 
 /* Структура для строки. В конце строки обязательно должен быть терминатор! */
 typedef struct str str;

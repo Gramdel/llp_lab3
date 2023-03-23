@@ -1,6 +1,7 @@
 #ifndef _ELEMENT_H_
 #define _ELEMENT_H_
 
+#include "format.h"
 #include "element_public.h"
 #include "document.h"
 

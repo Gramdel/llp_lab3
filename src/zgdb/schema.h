@@ -10,13 +10,12 @@ struct documentSchema {
     char name[13]; // имя схемы
 };
 
-/* Функция для расчёта размера будущего документа по схеме. */
+/* Функция для расчёта размера будущего документа по схеме.
+ * Возвращает будущее количество байт. */
 uint64_t calcDocumentSize(documentSchema* schema);
 
-// TODO: описание
-bool addElementToSchema(documentSchema* schema, element *el);
-
-// TODO: описание
+/* Функция для получения элемента их схемы по ключу.
+ * Возвращает NULL при неудаче. */
 element* getElementFromSchema(documentSchema* schema, const char* key);
 
 #endif

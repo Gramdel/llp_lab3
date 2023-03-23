@@ -1,36 +1,24 @@
 #include <malloc.h>
 #include <string.h>
-#include <stdarg.h>
 
-#include "format.h"
 #include "schema.h"
 #include "element.h"
 
-documentSchema* createSchema(const char* name, uint64_t length, ...) {
-    if (name && strlen(name) <= 12 && length) {
+documentSchema* createSchema(const char* name) {
+    if (name && strlen(name) <= 12) {
         documentSchema* schema = malloc(sizeof(documentSchema));
         if (schema) {
-            schema->length = length;
-            schema->elements = malloc(sizeof(element) * length);
+            schema->length = 0;
+            schema->elements = NULL;
             strcpy(schema->name, name);
-            if (schema->elements) {
-                va_list arg;
-                va_start(arg, length);
-                for (uint64_t i = 0; i < length; i++) {
-                    schema->elements[i] = va_arg(arg, element*);
-                    if (!schema->elements[i]) {
-                        va_end(arg);
-                        destroySchema(schema);
-                        return NULL;
-                    }
-                }
-                va_end(arg);
-                return schema;
-            }
-            free(schema);
+            return schema;
         }
     }
     return NULL;
+}
+
+documentSchema* createElements() {
+    return createSchema("0");
 }
 
 void destroySchema(documentSchema* schema) {
