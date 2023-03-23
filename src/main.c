@@ -25,8 +25,8 @@ int main(int argc, char** argv) {
 
     documentSchema* childSchema = createSchema("child");
     if (childSchema) {
-        addElementToSchema(childSchema, intElement("grChildInt1", 111));
-        addElementToSchema(childSchema, intElement("grChildInt2", 222));
+        addElementToSchema(childSchema, intElement("childInt1", 111));
+        addElementToSchema(childSchema, intElement("childInt2", 222));
     }
 
     documentSchema* grandChildSchema = createSchema("grandChild");
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
     documentSchema* newChildValues = createElements();
     if (childSchema) {
         addElementToSchema(newChildValues, intElement("childInt1", 121));
-        addElementToSchema(newChildValues, intElement("childInt1", 212));
+        addElementToSchema(newChildValues, intElement("childInt2", 212));
     }
 
     documentSchema* newGrandChildValues = createElements();
@@ -54,7 +54,6 @@ int main(int argc, char** argv) {
     }
 
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
-    destroyCondition(cond);
 
     query* insert = createInsertQuery(NULL, rootSchema, NULL);
     if (insert) {
@@ -73,15 +72,15 @@ int main(int argc, char** argv) {
 
     query* select = createSelectQuery("root", NULL);
     if (insert) {
-        query* selectChild = createSelectQuery("child", NULL);
-        addNestedQuery(selectChild, createSelectQuery("grandChild", NULL));
+        query* selectChild = createSelectQuery("child", cond);
+        addNestedQuery(selectChild, createSelectQuery("grandChild", cond));
         addNestedQuery(select, selectChild);
         addNestedQuery(select, createSelectQuery("child", NULL));
     }
 
     query* selectRoot = createSelectQuery("root", NULL);
 
-    query* update = createUpdateQuery("root", NULL, NULL);
+    query* update = createUpdateQuery("root", newRootValues, NULL);
     if (update) {
         query* updateChild = createUpdateQuery("child", newChildValues, NULL);
         addNestedQuery(updateChild, createUpdateQuery("grandChild", newGrandChildValues, NULL));
@@ -119,6 +118,13 @@ int main(int argc, char** argv) {
         //printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
+    executeSelect(file, &error, &it, selectRoot);
+    while (hasNext(it)) {
+        document* doc = next(file, it);
+        printDocument(doc);
+        printDocumentAsTree(file, doc);
+        destroyDocument(doc);
+    }
     destroyIterator(it);
 
     printf(executeDelete(file, &error, delete) ? "true\n" : "false\n");
@@ -131,7 +137,7 @@ int main(int argc, char** argv) {
     destroyIterator(it);
 
     destroySchema(rootSchema);
-
+    destroyCondition(cond);
     closeFile(file);
     return 0;
 }

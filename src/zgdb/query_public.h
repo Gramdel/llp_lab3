@@ -18,6 +18,7 @@ query* createSelectQuery(const char* schemaName, condition* cond);
 /* Функция для создания запроса INSERT. Условие опционально. Если сам данные не добавляет (нужен только для того, чтобы
  * дойти до места вставки), то обязательно имя, иначе - новые значения.
  * ВНИМАНИЕ: Одновременно передать и schemaName, и newValues нельзя, поскольку тогда это уже не INSERT, а UPDATE!
+ * ВНИМАНИЕ: Если не передан schemaName, то cond передавать нельзя!
  * Возвращает NULL при неудаче. */
 query* createInsertQuery(const char* schemaName, documentSchema* newValues, condition* cond);
 

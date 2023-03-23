@@ -128,36 +128,30 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, query* q) {
     if (q->type == INSERT_QUERY && !q->schemaName) {
         return true;
     }
-    // Если название указано, то находим индекс и проверяем документ:
-    if (indexNumber != DOCUMENT_NOT_EXIST) {
-        zgdbIndex index = getIndex(file, indexNumber);
-        if (index.flag == INDEX_ALIVE) {
-            fseeko64(file->f, index.offset, SEEK_SET); // спуск в документ по смещению
-            documentHeader header;
-            // Читаем заголовок документа и проверяем, соответствует ли имя его схемы имени требуемой:
-            if (fread(&header, sizeof(documentHeader), 1, file->f) && !strcmp(q->schemaName, header.schemaName)) {
-                // Если условие не указано, то соответствия схемы достаточно:
-                if (!q->cond) {
-                    return true;
-                }
-                uint64_t bytesRead = sizeof(documentHeader);
-                while (bytesRead < header.size) {
-                    element el;
-                    uint64_t tmp = readElement(file, &el, false);
-                    if (!tmp) {
+    // Если документ существует, то проверяем его:
+    document* doc = readDocument(file, indexNumber);
+    if (doc) {
+        if (!strcmp(q->schemaName, doc->header.schemaName)) {
+            // Проверяем новые значения на соответствие схеме (если они переданы):
+            if (q->newValues) {
+                // Если хотя бы один ключ из списка новых элементов отсутствует в схеме документа, возвращаем false:
+                for (uint64_t i = 0; i < q->newValues->length; i++) {
+                    if (!getElementFromSchema(doc->schema, q->newValues->elements[i]->key)) {
+                        destroyDocument(doc);
                         return false;
                     }
-                    // Если был достигнут конец документа (пустое место в нём), то выходим из цикла:
-                    if (el.type == TYPE_NOT_EXIST) {
-                        bytesRead = header.size;
-                    } else {
-                        bytesRead += tmp;
-                        checkCondition(&el, q->cond);
-                    }
                 }
-                return q->cond->isMet;
+            }
+            // Проверяем условие:
+            if (q->cond) {
+                for (uint64_t i = 0; i < doc->schema->length; i++) {
+                    checkCondition(doc->schema->elements[i], q->cond);
+                }
             }
         }
+        destroyDocument(doc);
+        // Если условие не передано, возвращаем true; иначе - результат проверки:
+        return !q->cond || q->cond->isMet;
     }
     return false;
 }

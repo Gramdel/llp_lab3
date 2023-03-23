@@ -116,7 +116,6 @@ opt_uint64_t writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brot
     return wrap_uint64_t(header.indexNumber);
 }
 
-// TODO: free(el)?
 document* readDocument(zgdbFile* file, uint64_t indexNumber) {
     zgdbIndex index = getIndex(file, indexNumber);
     if (index.flag == INDEX_ALIVE) {
@@ -136,6 +135,7 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
                     }
                     uint64_t tmp = readElement(file, el, false);
                     if (!tmp) {
+                        free(el);
                         destroyDocument(doc);
                         return NULL;
                     }
@@ -145,6 +145,7 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
                     } else {
                         bytesRead += tmp;
                         if (!addElementToSchema(doc->schema, el)) {
+                            free(el);
                             destroyDocument(doc);
                             return NULL;
                         }
@@ -204,7 +205,7 @@ void printDocumentAsTree(zgdbFile* file, document* doc) {
 }
 
 bool insertDocument(zgdbFile* file, uint64_t* parentIndexNumber, query* q) {
-    // Если вставлять документ не надо (нет новой схемы), то возвращаем true:
+    // Если переданы новые значения:
     if (q->newValues) {
         // Записываем документ:
         opt_uint64_t ref;
@@ -247,7 +248,6 @@ bool insertDocument(zgdbFile* file, uint64_t* parentIndexNumber, query* q) {
     return true;
 }
 
-// TODO: подчистить (возможно)
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
     // Если обновлять документ не надо (newValues == null), то возвращаем true:
     if (!q->newValues) {
@@ -261,22 +261,27 @@ bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
         if (fread(&header, sizeof(documentHeader), 1, file->f)) {
             uint64_t bytesLeft = header.size - sizeof(documentHeader);
             while (bytesLeft > 0) {
-                element oldElement;
-                uint64_t tmp = readElement(file, &oldElement, true);
+                element oldEl;
+                uint64_t tmp = readElement(file, &oldEl, true);
                 if (!tmp) {
                     return false;
                 }
                 // Если элемент не существует, то выходим из цикла. Иначе - обновляем элемент:
-                if (oldElement.type == TYPE_NOT_EXIST) {
+                if (oldEl.type == TYPE_NOT_EXIST) {
                     bytesLeft = 0;
                 } else {
                     bytesLeft -= tmp;
-                    element* newElement = getElementFromSchema(q->newValues, oldElement.key);
-                    if (newElement) {
+                    element* newEl = getElementFromSchema(q->newValues, oldEl.key);
+                    if (newEl) {
+                        // Смещаемся к началу только что считанного элемента:
                         fseeko64(file->f, (int64_t) -tmp, SEEK_CUR);
-                        if (newElement->type == TYPE_STRING) {
-                            updateString(file, &index, &header, &oldElement, newElement);
-                        } else if (!writeElement(file, newElement)) {
+                        if (newEl->type == TYPE_STRING) {
+                            if (!updateString(file, &index, &header, &oldEl, newEl)) {
+                                free(newEl);
+                                return false;
+                            }
+                        } else if (!writeElement(file, newEl)) {
+                            free(newEl);
                             return false;
                         }
                         fseeko64(file->f, 0, SEEK_CUR); // этот вызов нужен для того, чтобы можно было сделать fread
