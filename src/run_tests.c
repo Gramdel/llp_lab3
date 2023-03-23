@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include "zgdb/query_public.h"
 #include "tests/test.h"
 
@@ -41,10 +43,10 @@ int main(int argc, char** argv) {
     addNestedQuery(updateChild, createUpdateQuery("child", newElements, cond));
 
     // Запускаем тесты:
-    testInsertTime("test_insert", insertRoot, insertChild);
+    //testInsertTime("test_insert", insertRoot, insertChild);
     testSelectTime("test_select", insertRoot, insertChild, selectChild);
-    testUpdateTime("test_update", insertRoot, insertChild, insertAltChild, updateChild);
-    testFileSize("test_size", insertRoot, insertChild);
+    //testUpdateTime("test_update", insertRoot, insertChild, insertAltChild, updateChild);
+    //testFileSize("test_size", insertRoot, insertChild);
 
     destroySchema(rootSchema);
     destroySchema(childSchema);

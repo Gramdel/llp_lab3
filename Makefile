@@ -16,7 +16,7 @@ run_tests: $(LIB_SOURCE_FILES) $(TESTS_PATH)/test.c $(SRC_PATH)/run_tests.c
 	$(CC) $(CFLAGS) $(LIB_SOURCE_FILES) $(TESTS_PATH)/test.c $(SRC_PATH)/run_tests.c -o run_tests
 
 clean:
-	rm demo; \
-	rm run_tests
+	rm -rf demo
+	rm -rf run_tests
 
 .PHONY: all clean

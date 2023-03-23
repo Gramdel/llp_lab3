@@ -14,7 +14,7 @@ void testInsertTime(const char* fileName, query* insertRoot, query* insertChild)
         exit(-1);
     }
     // Пробуем вставить корень:
-    bool error;
+    bool error = false;
     if (!executeInsert(file, &error, insertRoot)) {
         exit(-1);
     }
@@ -41,7 +41,7 @@ void testSelectTime(const char* fileName, query* insertRoot, query* insertChild,
         exit(-1);
     }
     // Пробуем вставить корень:
-    bool error;
+    bool error = false;
     if (!executeInsert(file, &error, insertRoot)) {
         exit(-1);
     }
@@ -74,7 +74,7 @@ void testUpdateTime(const char* fileName, query* insertRoot, query* insertChild,
         exit(-1);
     }
     // Пробуем вставить корень:
-    bool error;
+    bool error = false;
     if (!executeInsert(file, &error, insertRoot)) {
         exit(-1);
     }
@@ -105,7 +105,7 @@ void testFileSize(const char* fileName, query* insertRoot, query* insertChild) {
         exit(-1);
     }
     // Пробуем вставить корень:
-    bool error;
+    bool error = false;
     if (!executeInsert(file, &error, insertRoot)) {
         exit(-1);
     }

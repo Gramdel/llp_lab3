@@ -16,7 +16,7 @@ run_tests: $(LIB_SOURCE_FILES) $(TESTS_PATH)/test.c $(SRC_PATH)/run_tests.c
 	$(CC) $(CFLAGS) $(LIB_SOURCE_FILES) $(TESTS_PATH)/test.c $(SRC_PATH)/run_tests.c -o run_tests
 
 clean:
-	del demo.exe; \
-	del run_tests.exe
+	del -rf demo.exe
+	del -rf run_tests.exe
 
 .PHONY: all clean

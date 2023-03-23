@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
     query* delete = createDeleteQuery("root", NULL);
 
-    bool error;
+    bool error = false;
     printf(executeInsert(file, &error, insert) ? "true\n" : "false\n");
     iterator* it = NULL;
     executeSelect(file, &error, &it, selectRoot);
