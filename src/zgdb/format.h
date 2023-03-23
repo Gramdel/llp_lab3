@@ -64,4 +64,10 @@ bool updateIndex(zgdbFile* file, uint64_t i, opt_uint8_t flag, opt_int64_t offse
  * Возвращает false при неудаче. */
 bool moveData(zgdbFile* file, int64_t* oldPos, int64_t* newPos, uint64_t size);
 
+/* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
+ * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
+ * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
+ * Возвращает false при неудаче. */
+bool moveFirstDocuments(zgdbFile* file);
+
 #endif

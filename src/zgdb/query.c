@@ -128,7 +128,6 @@ bool executeDelete(zgdbFile* file, bool* error, query* q) {
 
 bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNumber, query* q,
                    bool (* mutate)(zgdbFile*, uint64_t*, query*)) {
-    uint64_t parentIndexNumber = *indexNumber;
     bool match = checkDocument(file, *indexNumber, q);
     resetCondition(q->cond); // сброс cond.met
     if (match && (q->type == SELECT_QUERY || mutate(file, indexNumber, q))) {
@@ -148,7 +147,12 @@ bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNum
             }
             // Потом выполняем вложенные запросы для каждого из детей:
             for (uint64_t i = 0; i < q->length; i++) {
-                if (q->type != INSERT_QUERY || !q->nestedQueries[i]->newValues) {
+                // В случае вставки в только что созданный документ, его детей проверять не надо. Просто вызываем рекурсию:
+                if (q->type == INSERT_QUERY && q->nestedQueries[i]->newValues) {
+                    if (!findAndMutate(file, error, it, indexNumber, q->nestedQueries[i], mutate)) {
+                        return false;
+                    }
+                } else {
                     bool atLeastOneFound = false;
                     uint64_t childIndexNumber = header.lastChildIndexNumber;
                     while (childIndexNumber != DOCUMENT_NOT_EXIST) {
@@ -187,12 +191,10 @@ bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNum
                     if (!atLeastOneFound) {
                         return false;
                     }
-                } else if (!findAndMutate(file, error, it, indexNumber, q->nestedQueries[i], mutate)) {
-                    return false;
                 }
             }
             return true;
-        } else if (!mutate) {
+        } else if (q->type == SELECT_QUERY) {
             return addRef(it, *indexNumber);
         }
         return true;

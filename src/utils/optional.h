@@ -4,7 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define declOptional(T) typedef struct { \
+/* Макрос для определения структуры "optional" opt_T, где T - оборачиваемый тип данных, и двух функций:
+ * not_present_T - создаёт opt_T с isPresent = false
+ * wrap_T - оборачивает значение в opt_T, isPresent = true */
+#define declOptional(T) typedef struct {\
     bool isPresent;                     \
     T value;                            \
 } opt_##T;                              \

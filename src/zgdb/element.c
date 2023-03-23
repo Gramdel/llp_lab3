@@ -128,12 +128,10 @@ void printElement(element* el) {
     }
 }
 
-bool updateStringElement(zgdbFile* file, zgdbIndex* index, documentHeader* header, element* oldElement,
-                         element* newElement) {
+bool updateString(zgdbFile* file, zgdbIndex* index, documentHeader* header, element* oldEl, element* newEl) {
     uint64_t newHeaderSize = 0;
     int64_t offsetOfElement = ftello64(file->f) - index->offset; // смещение строки относительно начала документа
-    int64_t delta =
-            (int64_t) newElement->stringValue.size - (int64_t) oldElement->stringValue.size; // изменение размера строки
+    int64_t delta = (int64_t) newEl->stringValue.size - (int64_t) oldEl->stringValue.size; // изменение размера строки
 
     // Если строка стала больше, то ей нужно найти новое место:
     if (delta > 0) {
@@ -220,8 +218,8 @@ bool updateStringElement(zgdbFile* file, zgdbIndex* index, documentHeader* heade
     }
 
     // Перемещаем кусок документа после строки, чтобы не перекрыть его новой строкой и чтобы не было дырок:
-    int64_t oldPos = (int64_t) (index->offset + offsetOfElement + sizeof(oldElement->type) + sizeof(oldElement->key) +
-                                sizeof(oldElement->stringValue.size) + oldElement->stringValue.size);
+    int64_t oldPos = (int64_t) (index->offset + offsetOfElement + sizeof(oldEl->type) + sizeof(oldEl->key) +
+                                sizeof(oldEl->stringValue.size) + oldEl->stringValue.size);
     int64_t newPos = oldPos + delta;
     if (!moveData(file, &oldPos, &newPos, index->offset + header->size - oldPos)) {
         return false;
@@ -234,7 +232,7 @@ bool updateStringElement(zgdbFile* file, zgdbIndex* index, documentHeader* heade
     }
     // Возвращаемся к началу элемента, перезаписываем его:
     fseeko64(file->f, index->offset + offsetOfElement, SEEK_SET);
-    if (!writeElement(file, newElement)) {
+    if (!writeElement(file, newEl)) {
         return false;
     }
     return true;

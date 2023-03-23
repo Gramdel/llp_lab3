@@ -1,7 +1,6 @@
 #ifndef _SCHEMA_PUBLIC_H_
 #define _SCHEMA_PUBLIC_H_
 
-#include <stdint.h>
 #include <stdbool.h>
 
 #include "element_public.h"

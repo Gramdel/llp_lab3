@@ -2,8 +2,8 @@
 #define _DOCUMENT_H_
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#include "format_public.h"
 #include "document_public.h"
 #include "element_public.h"
 #include "iterator_public.h"
@@ -31,32 +31,32 @@ struct document {
     documentSchema* schema; // указатель на схему документа
 };
 
-// TODO: описание
+/* Функция для создания структуры, хранящей документ в оперативной памяти (не в файле!).
+ * Возвращает NULL при неудаче. */
 document* createDocument();
 
-/* Функция для перемещения документов, идущих в файле сразу после индексов, в новое место (в конец файла или дырку).
- * Продлевает массив индексов, используя освобождённое место. Если освободившееся место не делится нацело на размер
- * индекса, то остаток сохраняется в заголовке файла в firstDocumentOffset.
- * Возвращает false при неудаче. */
-bool moveFirstDocuments(zgdbFile* file);
-
-/* Функция для добавления нового документа в файл. Если у документа есть "дети", то создаёт их, спускается в их заголовки
- * и записывает в них информацию об индексе добавляемого документа (родителя).
- * Возвращает ссылку на документ или NULL (при неудаче). TODO*/
+/* Функция для записи нового документа в файл.
+ * ВАЖНО: Принимает brotherIndexNumber, за счёт которого прикрепляется к "списку братьев" в родителе.
+ * Возвращает обёрнутый номер индекса записанного документа. */
 opt_uint64_t writeDocument(zgdbFile* file, documentSchema* schema, uint64_t brotherIndexNumber);
 
-// TODO: описание
+/* Функция для чтения документа из файла в оперативную память.
+ * Возвращает NULL при неудаче. */
 document* readDocument(zgdbFile* file, uint64_t indexNumber);
 
+/* Функция для рекурсивного вывода информации из заголовков документов в дереве. */
 void printTree(zgdbFile* file, documentHeader header, uint64_t nestingLevel);
 
-// TODO: описание
-bool insertDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
+/* Функция для вставки документа в родителя. Предварительно вызывает writeDocument.
+ * Возвращает false при неудаче. */
+bool insertDocument(zgdbFile* file, uint64_t* parentIndexNumber, query* q);
 
-// TODO: описание
+/* Функция для обновления документа по его номеру индекса.
+ * Возвращает false при неудаче. */
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
 
-// TODO: описание
+/* Функция для удаления документа (и всех вложенных в него документов) по его номеру индекса.
+ * Возвращает false при неудаче. */
 bool removeDocument(zgdbFile* file, uint64_t* indexNumber, query* q);
 
 #endif

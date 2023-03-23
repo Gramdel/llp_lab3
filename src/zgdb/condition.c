@@ -54,18 +54,16 @@ condition* condNot(condition* cond) {
     return cond ? createCondition(OP_NOT, cond, NULL) : NULL;
 }
 
-int32_t compare(element* el1, element* el2) {
-    switch (el1->type) {
-        case TYPE_INT:
-            return (el1->integerValue > el2->integerValue) - (el1->integerValue < el2->integerValue);
-        case TYPE_DOUBLE:
-            return (el1->doubleValue > el2->doubleValue) - (el1->doubleValue < el2->doubleValue);
-        case TYPE_BOOLEAN:
-            return el1->booleanValue - el2->booleanValue;
-        case TYPE_STRING:
-            return strcmp(el1->stringValue.data, el2->stringValue.data);
+void destroyCondition(condition* cond) {
+    if (cond) {
+        if (cond->opType >= OP_AND) {
+            destroyCondition(cond->cond1);
+            destroyCondition(cond->cond2);
+        } else {
+            destroyElement(cond->el);
+        }
+        free(cond);
     }
-    return 0;
 }
 
 void resetCondition(condition* cond) {
@@ -109,10 +107,10 @@ bool checkCondition(element* el, condition* cond) {
             result = compare(el, cond->el) <= 0;
             break;
         case OP_AND:
-            result = checkCondition(el, cond->cond1) && checkCondition(el, cond->cond2);
+            result = checkCondition(el, cond->cond1) & checkCondition(el, cond->cond2);
             break;
         case OP_OR:
-            result = checkCondition(el, cond->cond1) || checkCondition(el, cond->cond2);
+            result = checkCondition(el, cond->cond1) | checkCondition(el, cond->cond2);
             break;
         case OP_NOT:
             result = !checkCondition(el, cond->cond1);
@@ -162,4 +160,18 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, query* q) {
         }
     }
     return false;
+}
+
+int32_t compare(element* el1, element* el2) {
+    switch (el1->type) {
+        case TYPE_INT:
+            return (el1->integerValue > el2->integerValue) - (el1->integerValue < el2->integerValue);
+        case TYPE_DOUBLE:
+            return (el1->doubleValue > el2->doubleValue) - (el1->doubleValue < el2->doubleValue);
+        case TYPE_BOOLEAN:
+            return el1->booleanValue - el2->booleanValue;
+        case TYPE_STRING:
+            return strcmp(el1->stringValue.data, el2->stringValue.data);
+    }
+    return 0;
 }

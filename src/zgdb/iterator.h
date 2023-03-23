@@ -1,9 +1,9 @@
 #ifndef _ITERATOR_H_
 #define _ITERATOR_H_
 
-#include "iterator_public.h"
+#include <stdint.h>
 
-#include <malloc.h>
+#include "iterator_public.h"
 
 struct iterator {
     uint64_t* refs; // массив номеров индексов документов, которые попали в выборку
@@ -11,8 +11,12 @@ struct iterator {
     int64_t curr; // текущий элемент, на котором находится итератор
 };
 
+/* Функция для создания итератора.
+ * Возвращает NULL при неудаче. */
 iterator* createIterator();
 
+/* Функция для добавления номера документа в набор.
+ * Возвращает false при неудаче. */
 bool addRef(iterator* dest, uint64_t ref);
 
 #endif

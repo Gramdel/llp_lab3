@@ -1,6 +1,8 @@
 #ifndef _SCHEMA_H_
 #define _SCHEMA_H_
 
+#include <stdint.h>
+
 #include "schema_public.h"
 #include "element_public.h"
 

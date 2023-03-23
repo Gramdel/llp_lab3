@@ -54,6 +54,7 @@ int main(int argc, char** argv) {
     }
 
     condition* cond = condOr(condLess(intElement("childInt1", 1000)), condLess(intElement("grChildInt2", 10000)));
+    destroyCondition(cond);
 
     query* insert = createInsertQuery(NULL, rootSchema, NULL);
     if (insert) {
