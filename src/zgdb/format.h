@@ -2,7 +2,7 @@
 #define _FORMAT_H_
 
 #define ZGDB_FILETYPE 0x4244475A
-#define ZGDB_DEFAULT_INDEX_CAPACITY 10
+#define ZGDB_DEFAULT_INDEX_CAPACITY 10000
 #define ZGDB_BUF_SIZE 500000000 // при перемещении большие документы будут перемещаться кусками по 500Мб
 
 #include <stdint.h>

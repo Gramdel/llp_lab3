@@ -72,35 +72,39 @@ uint64_t writeElement(zgdbFile* file, element* el) {
 
 uint64_t readElement(zgdbFile* file, element* el, bool skipStrings) {
     el->wasLoaded = true;
-    if (fread(&el->type, sizeof(uint8_t), 1, file->f) && fread(&el->key, sizeof(char), 13, file->f) == 13) {
-        uint64_t bytesRead = sizeof(uint8_t) + sizeof(char) * 13;
-        switch (el->type) {
-            case TYPE_NOT_EXIST:
-                return bytesRead;
-            case TYPE_INT:
-                return fread(&el->integerValue, sizeof(int32_t), 1, file->f) ? bytesRead + sizeof(int32_t) : 0;
-            case TYPE_DOUBLE:
-                return fread(&el->doubleValue, sizeof(double), 1, file->f) ? bytesRead + sizeof(double) : 0;
-            case TYPE_BOOLEAN:
-                return fread(&el->booleanValue, sizeof(uint8_t), 1, file->f) ? bytesRead + sizeof(uint8_t) : 0;
-            case TYPE_STRING:
-                if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
-                    // Если нужно пропустить строку (например, при поиске вложенных документов), то не загружаем её:
-                    if (skipStrings) {
-                        fseeko64(file->f, el->stringValue.size, SEEK_CUR);
-                        return bytesRead + sizeof(uint32_t) + el->stringValue.size;
-                    }
-                    // Если пропускать не нужно, то выделяем память:
-                    el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
-                    if (el->stringValue.data) {
-                        if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
-                            el->stringValue.size) {
+    if (fread(&el->type, sizeof(uint8_t), 1, file->f)) {
+        if (el->type == TYPE_NOT_EXIST) {
+            return sizeof(uint8_t);
+        } else if (fread(&el->key, sizeof(char), 13, file->f) == 13) {
+            uint64_t bytesRead = sizeof(uint8_t) + sizeof(char) * 13;
+            switch (el->type) {
+                case TYPE_NOT_EXIST:
+                    return bytesRead;
+                case TYPE_INT:
+                    return fread(&el->integerValue, sizeof(int32_t), 1, file->f) ? bytesRead + sizeof(int32_t) : 0;
+                case TYPE_DOUBLE:
+                    return fread(&el->doubleValue, sizeof(double), 1, file->f) ? bytesRead + sizeof(double) : 0;
+                case TYPE_BOOLEAN:
+                    return fread(&el->booleanValue, sizeof(uint8_t), 1, file->f) ? bytesRead + sizeof(uint8_t) : 0;
+                case TYPE_STRING:
+                    if (fread(&el->stringValue.size, sizeof(uint32_t), 1, file->f)) {
+                        // Если нужно пропустить строку (например, при поиске вложенных документов), то не загружаем её:
+                        if (skipStrings) {
+                            fseeko64(file->f, el->stringValue.size, SEEK_CUR);
                             return bytesRead + sizeof(uint32_t) + el->stringValue.size;
                         }
-                        free(el->stringValue.data);
+                        // Если пропускать не нужно, то выделяем память:
+                        el->stringValue.data = malloc(sizeof(char) * el->stringValue.size);
+                        if (el->stringValue.data) {
+                            if (fread(el->stringValue.data, sizeof(char), el->stringValue.size, file->f) ==
+                                el->stringValue.size) {
+                                return bytesRead + sizeof(uint32_t) + el->stringValue.size;
+                            }
+                            free(el->stringValue.data);
+                        }
                     }
-                }
-                return 0;
+                    return 0;
+            }
         }
     }
     return 0;

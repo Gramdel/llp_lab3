@@ -31,7 +31,8 @@ query* createUpdateQuery(const char* schemaName, documentSchema* newValues, cond
  * Возвращает NULL при неудаче. */
 query* createDeleteQuery(const char* schemaName, condition* cond);
 
-/* Функция для уничтожения запроса. */
+/* Функция для уничтожения запроса.
+ * ВНИМАНИЕ: Уничтожает и все подзапросы! */
 void destroyQuery(query* q);
 
 /* Функция для добавления подзапроса nq в запрос q.

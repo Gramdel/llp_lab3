@@ -205,53 +205,54 @@ void printDocumentAsTree(zgdbFile* file, document* doc) {
 }
 
 bool insertDocument(zgdbFile* file, uint64_t* parentIndexNumber, query* q) {
-    // Если переданы новые значения:
-    if (q->newValues) {
-        // Записываем документ:
-        opt_uint64_t ref;
-        if (*parentIndexNumber != DOCUMENT_NOT_EXIST) {
-            // Считываем заголовок родителя:
-            zgdbIndex parentIndex = getIndex(file, *parentIndexNumber);
-            documentHeader parentHeader;
-            if (parentIndex.flag != INDEX_ALIVE) {
-                return false;
-            }
-            fseeko64(file->f, parentIndex.offset, SEEK_SET);
-            if (!fread(&parentHeader, sizeof(documentHeader), 1, file->f)) {
-                return false;
-            }
-            // Записываем документ:
-            ref = writeDocument(file, q->newValues, parentHeader.lastChildIndexNumber);
-            if (!ref.isPresent) {
-                return false;
-            }
-            // Считываем индекс заново, поскольку родитель мог переместиться:
-            parentIndex = getIndex(file, *parentIndexNumber);
-            if (parentIndex.flag != INDEX_ALIVE) {
-                return false;
-            }
-            // Перезаписываем последнего ребёнка в заголовке родителя:
-            parentHeader.lastChildIndexNumber = ref.value;
-            fseeko64(file->f, parentIndex.offset, SEEK_SET);
-            if (!fwrite(&parentHeader, sizeof(documentHeader), 1, file->f)) {
-                return false;
-            }
-        } else {
-            // Если не указан родитель, то сразу добавляем:
-            ref = writeDocument(file, q->newValues, DOCUMENT_NOT_EXIST);
-            if (!ref.isPresent) {
-                return false;
-            }
-        }
-        *parentIndexNumber = ref.value; // передаём номер индекса для того, чтобы потом добавить детей
+    // Если вставлять документ не надо (newValues == null), то, если вложенные запросы есть, вернём true, иначе - ошибка:
+    if (!q->newValues) {
+        return q->nestedQueries;
     }
+    // Записываем документ:
+    opt_uint64_t ref;
+    if (*parentIndexNumber != DOCUMENT_NOT_EXIST) {
+        // Считываем заголовок родителя:
+        zgdbIndex parentIndex = getIndex(file, *parentIndexNumber);
+        documentHeader parentHeader;
+        if (parentIndex.flag != INDEX_ALIVE) {
+            return false;
+        }
+        fseeko64(file->f, parentIndex.offset, SEEK_SET);
+        if (!fread(&parentHeader, sizeof(documentHeader), 1, file->f)) {
+            return false;
+        }
+        // Записываем документ:
+        ref = writeDocument(file, q->newValues, parentHeader.lastChildIndexNumber);
+        if (!ref.isPresent) {
+            return false;
+        }
+        // Считываем индекс заново, поскольку родитель мог переместиться:
+        parentIndex = getIndex(file, *parentIndexNumber);
+        if (parentIndex.flag != INDEX_ALIVE) {
+            return false;
+        }
+        // Перезаписываем последнего ребёнка в заголовке родителя:
+        parentHeader.lastChildIndexNumber = ref.value;
+        fseeko64(file->f, parentIndex.offset, SEEK_SET);
+        if (!fwrite(&parentHeader, sizeof(documentHeader), 1, file->f)) {
+            return false;
+        }
+    } else {
+        // Если не указан родитель, то сразу добавляем:
+        ref = writeDocument(file, q->newValues, DOCUMENT_NOT_EXIST);
+        if (!ref.isPresent) {
+            return false;
+        }
+    }
+    *parentIndexNumber = ref.value; // передаём номер индекса для того, чтобы потом добавить детей
     return true;
 }
 
 bool updateDocument(zgdbFile* file, uint64_t* indexNumber, query* q) {
-    // Если обновлять документ не надо (newValues == null), то возвращаем true:
+    // Если обновлять документ не надо (newValues == null), то, если вложенные запросы есть, вернём true, иначе - ошибка:
     if (!q->newValues) {
-        return true;
+        return q->nestedQueries;
     }
     // Обновляем документ:
     zgdbIndex index = getIndex(file, *indexNumber);

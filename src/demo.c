@@ -1,26 +1,26 @@
 ﻿#include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "zgdb/document_public.h"
 #include "zgdb/query_public.h"
 
 int main(int argc, char** argv) {
-    zgdbFile* file = loadFile("test");
+    zgdbFile* file = loadFile("demo_db");
     if (!file) {
-        file = createFile("test");
+        file = createFile("demo_db");
         if (!file) {
             printf("Error\n");
             exit(-1);
         }
     }
 
-    documentSchema* rootSchema = createSchema("root"); // length
+    documentSchema* rootSchema = createSchema("root");
     if (rootSchema) {
         addElementToSchema(rootSchema, intElement("rootInt1", 123));
         addElementToSchema(rootSchema, intElement("rootInt2", 456));
         addElementToSchema(rootSchema, intElement("rootInt3", 789));
         addElementToSchema(rootSchema, booleanElement("isFirst", true));
         addElementToSchema(rootSchema, doubleElement("rootDouble", 128.128));
-        addElementToSchema(rootSchema, stringElement("rootString", ""));
+        addElementToSchema(rootSchema, stringElement("rootString", "HI WORLD!"));
     }
 
     documentSchema* childSchema = createSchema("child");
@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
 
     documentSchema* newRootValues = createSchema("root");
     if (newRootValues) {
-        addElementToSchema(newRootValues, stringElement("rootString", "HEY BITCH!"));
+        addElementToSchema(newRootValues, stringElement("rootString", "HEY BEACH!"));
     }
 
     documentSchema* newChildValues = createElements();
@@ -115,14 +115,12 @@ int main(int argc, char** argv) {
     while (hasNext(it)) {
         document* doc = next(file, it);
         printDocument(doc);
-        //printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     executeSelect(file, &error, &it, selectRoot);
     while (hasNext(it)) {
         document* doc = next(file, it);
         printDocument(doc);
-        printDocumentAsTree(file, doc);
         destroyDocument(doc);
     }
     destroyIterator(it);
