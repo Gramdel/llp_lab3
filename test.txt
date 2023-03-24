@@ -1,7 +1,94 @@
+// TEST INSERT
+
+// false
 insert {
-    root (values: [{rootInt : 111}])
+    root
 }
 
+// false
+insert {
+    root(filter: eq(rootInt1, "value"))
+}
+
+// false
+insert {
+    root(values: [])
+}
+
+// false
+insert {
+    root(values: [{}])
+}
+
+// true
+insert {
+    root(values: [{rootInt1 : 111}])
+}
+
+// true
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value"))
+}
+
+// false
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child
+    }
+}
+
+// false
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}])
+    }
+}
+
+// TEST SELECT
+
+// true
 select {
-    root (filter: eq(rootInt1, "value"))
+    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, 1000)))
+}
+
+// false
+select {
+    root(values: [{childBool : true}], filter: eq(rootInt1, "value"))
+}
+
+// TEST UPDATE
+
+// false
+update {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child
+    }
+}
+
+// true
+update {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}])
+    }
+}
+
+// true
+update {
+    root(filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}]) {
+            grChild {
+                grGrChild(values: [{grGrChdDoubl : 505.505}])
+            }
+        }
+    }
+}
+
+// TEST MULTIPLE QUERIES AT ONCE:
+
+// true
+select {
+    root {
+        child
+    },
+    grChild
 }

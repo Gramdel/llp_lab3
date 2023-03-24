@@ -34,7 +34,7 @@ like                           { return LIKE; }
 true                           { yylval.bool_val = true; return TRUE; }
 false                          { yylval.bool_val = false; return FALSE; }
 [+-]?[0-9]+                    { yylval.int_val = atoi(yytext); return INT; }
-[+-]?[0-9]\.?[0-9]*            { yylval.double_val = atof(yytext); return DOUBLE; }
+[+-]?[0-9]*\.[0-9]*            { yylval.double_val = atof(yytext); return DOUBLE; }
 \"[^\"]*\"                     { yylval.str = strdup(yytext); return STRING; }
 [A-Za-z_][A-Za-z0-9_]{0,11}    { yylval.str = strdup(yytext); return NAME; }
 .                              { /* Игнорируем всё остальное */ }

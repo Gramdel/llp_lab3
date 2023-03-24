@@ -52,8 +52,9 @@ int main() {
 %%
 
 query: select | insert | update | delete
+        { printf("SUCCESS\n"); }
 
-select: SELECT select_next { printf("select!"); }
+select: SELECT select_next
 
 insert: INSERT insert_or_select_next
 
@@ -62,38 +63,44 @@ update: UPDATE update_next
 delete: DELETE select_next
 
 select_next: L_BRACE select_object R_BRACE
+           | L_BRACE select_object R_BRACE COMMA select_next
            | L_BRACE select_object select_next R_BRACE
+           | L_BRACE select_object select_next R_BRACE COMMA select_next
 
 insert_or_select_next: insert_next
-                     | L_BRACE select_object insert_or_select_next R_BRACE { printf("insert or select!"); }
+                     | L_BRACE select_object insert_or_select_next R_BRACE
+                     | L_BRACE select_object insert_or_select_next R_BRACE COMMA insert_or_select_next
 
 insert_next: L_BRACE mutate_object R_BRACE
-           | L_BRACE mutate_object insert_next R_BRACE { printf("insert next!"); }
+           | L_BRACE mutate_object R_BRACE COMMA insert_next
+           | L_BRACE mutate_object insert_next R_BRACE
+           | L_BRACE mutate_object insert_next R_BRACE COMMA insert_next
 
 update_next: L_BRACE mutate_object R_BRACE
+           | L_BRACE mutate_object R_BRACE COMMA update_next
            | L_BRACE mutate_object update_next R_BRACE
+           | L_BRACE mutate_object update_next R_BRACE COMMA update_next
            | L_BRACE select_object update_next R_BRACE
+           | L_BRACE select_object update_next R_BRACE COMMA update_next
 
 select_object: schema_name
              | schema_name L_PARENTHESIS filter R_PARENTHESIS
 
-mutate_object: schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS
+mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS
+             | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS
 
 schema_name: NAME
 
 values: VALUES COLON L_BRACKET element R_BRACKET
 
-element:
-       | L_BRACE key COLON value R_BRACE
+element: L_BRACE key COLON value R_BRACE
        | element COMMA L_BRACE key COLON value R_BRACE
-       { printf("element"); }
 
-key: NAME { printf("%s", $1); }
+key: NAME
 
-value: TRUE | FALSE | INT | DOUBLE | STRING { printf("%s", $1); }
+value: TRUE | FALSE | INT | DOUBLE | STRING
 
-filter:
-      | FILTER COLON operation
+filter: FILTER COLON operation
 
 operation: compare_op | logical_op
 
