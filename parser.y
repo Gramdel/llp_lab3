@@ -9,12 +9,6 @@ extern int yylineno;
 void yyerror(const char *msg) {
     fprintf(stderr, "Error on line %d: %s\n", yylineno, msg);
 }
-
-int main() {
-	yyparse();
-	return 0;
-}
-
 %}
 
 %union {
@@ -52,36 +46,35 @@ int main() {
 %%
 
 query: select | insert | update | delete
-        { printf("SUCCESS\n"); }
 
-select: SELECT select_next
+select: SELECT L_BRACE select_next R_BRACE
 
-insert: INSERT insert_or_select_next
+insert: INSERT L_BRACE insert_or_select_next R_BRACE
 
-update: UPDATE update_next
+update: UPDATE L_BRACE update_next R_BRACE
 
-delete: DELETE select_next
+delete: DELETE L_BRACE select_next R_BRACE
 
-select_next: L_BRACE select_object R_BRACE
-           | L_BRACE select_object R_BRACE COMMA select_next
-           | L_BRACE select_object select_next R_BRACE
-           | L_BRACE select_object select_next R_BRACE COMMA select_next
+select_next: select_object
+           | select_object COMMA select_next
+           | select_object L_BRACE select_next R_BRACE
+           | select_object L_BRACE select_next R_BRACE COMMA select_next
 
 insert_or_select_next: insert_next
-                     | L_BRACE select_object insert_or_select_next R_BRACE
-                     | L_BRACE select_object insert_or_select_next R_BRACE COMMA insert_or_select_next
+                     | select_object L_BRACE insert_or_select_next R_BRACE
+                     | select_object L_BRACE insert_or_select_next R_BRACE COMMA insert_or_select_next
 
-insert_next: L_BRACE mutate_object R_BRACE
-           | L_BRACE mutate_object R_BRACE COMMA insert_next
-           | L_BRACE mutate_object insert_next R_BRACE
-           | L_BRACE mutate_object insert_next R_BRACE COMMA insert_next
+insert_next: mutate_object
+           | mutate_object COMMA insert_next
+           | mutate_object L_BRACE insert_next R_BRACE
+           | mutate_object L_BRACE insert_next R_BRACE COMMA insert_next
 
-update_next: L_BRACE mutate_object R_BRACE
-           | L_BRACE mutate_object R_BRACE COMMA update_next
-           | L_BRACE mutate_object update_next R_BRACE
-           | L_BRACE mutate_object update_next R_BRACE COMMA update_next
-           | L_BRACE select_object update_next R_BRACE
-           | L_BRACE select_object update_next R_BRACE COMMA update_next
+update_next: mutate_object
+           | mutate_object COMMA update_next
+           | mutate_object L_BRACE update_next R_BRACE
+           | mutate_object L_BRACE update_next R_BRACE COMMA update_next
+           | select_object L_BRACE update_next R_BRACE
+           | select_object L_BRACE update_next R_BRACE COMMA update_next
 
 select_object: schema_name
              | schema_name L_PARENTHESIS filter R_PARENTHESIS

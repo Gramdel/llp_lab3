@@ -37,5 +37,6 @@ false                          { yylval.bool_val = false; return FALSE; }
 [+-]?[0-9]*\.[0-9]*            { yylval.double_val = atof(yytext); return DOUBLE; }
 \"[^\"]*\"                     { yylval.str = strdup(yytext); return STRING; }
 [A-Za-z_][A-Za-z0-9_]{0,11}    { yylval.str = strdup(yytext); return NAME; }
+\n                             { /* Считываем перенос строки, чтобы работал yylineno */ }
 .                              { /* Игнорируем всё остальное */ }
 %%

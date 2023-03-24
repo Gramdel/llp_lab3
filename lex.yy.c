@@ -373,8 +373,8 @@ static void yynoreturn yy_fatal_error ( const char* msg  );
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 32
-#define YY_END_OF_BUFFER 33
+#define YY_NUM_RULES 33
+#define YY_END_OF_BUFFER 34
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -384,7 +384,7 @@ struct yy_trans_info
 	};
 static const flex_int16_t yy_accept[101] =
     {   0,
-        0,    0,   33,   31,   32,   31,    1,    2,   31,    7,
+        0,    0,   34,   32,   31,   32,    1,    2,   32,    7,
        28,   27,    8,   30,    5,    6,   30,   30,   30,   30,
        30,   30,   30,   30,   30,   30,   30,   30,   30,    3,
         4,    0,   29,   28,   27,   28,   30,   30,   30,   15,
@@ -512,10 +512,10 @@ static const flex_int16_t yy_chk[145] =
     } ;
 
 /* Table of booleans, true if rule could match eol. */
-static const flex_int32_t yy_rule_can_match_eol[33] =
+static const flex_int32_t yy_rule_can_match_eol[34] =
     {   0,
 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,     };
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0,     };
 
 static yy_state_type yy_last_accepting_state;
 static char *yy_last_accepting_cpos;
@@ -974,16 +974,22 @@ YY_RULE_SETUP
 { yylval.str = strdup(yytext); return NAME; }
 	YY_BREAK
 case 31:
+/* rule 31 can match eol */
 YY_RULE_SETUP
 #line 40 "lexer.l"
-{ /* Игнорируем всё остальное */ }
+{ /* Считываем перенос строки, чтобы работал yylineno */ }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
 #line 41 "lexer.l"
+{ /* Игнорируем всё остальное */ }
+	YY_BREAK
+case 33:
+YY_RULE_SETUP
+#line 42 "lexer.l"
 ECHO;
 	YY_BREAK
-#line 987 "lex.yy.c"
+#line 993 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1959,6 +1965,6 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 41 "lexer.l"
+#line 42 "lexer.l"
 
 
