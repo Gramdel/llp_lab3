@@ -1,0 +1,7 @@
+insert {
+    root (values: [{rootInt : 111}])
+}
+
+select {
+    root (filter: eq(rootInt1, "value"))
+}
