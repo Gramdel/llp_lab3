@@ -12,10 +12,10 @@ parser_debug: parser.y
 lexer: lexer.l
 	flex lexer.l
 
-main: parser lexer main.c
-	gcc parser.tab.c lex.yy.c main.c -o main
+main: parser lexer graphql_ast.c main.c
+	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o main
 
-debug: parser_debug lexer main.c
-	gcc parser.tab.c lex.yy.c main.c -o debug
+debug: parser_debug lexer graphql_ast.c main.c
+	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o debug
 
 .PHONY: all clean parser parser_debug lexer

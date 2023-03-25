@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include "graphql_ast.h"
 
 extern int yylex();
 extern int yylineno;
@@ -12,10 +13,12 @@ void yyerror(const char *msg) {
 %}
 
 %union {
-    bool bool_val;
-    int int_val;
-    double double_val;
-    const char* str;
+    bool boolVal;
+    int intVal;
+    double doubleVal;
+    const char* strVal;
+    astNode* node;
+    nodeType opType;
 }
 
 %token L_PARENTHESIS
@@ -32,22 +35,25 @@ void yyerror(const char *msg) {
 %token DELETE
 %token VALUES
 %token FILTER
-%token COMPARE_OP
-%token LOGICAL_BOP
-%token LOGICAL_UOP
-%token LIKE
-%token<bool_val> TRUE
-%token<bool_val> FALSE
-%token<int_val> INT
-%token<double_val> DOUBLE
-%token<str> STRING
-%token<str> NAME
+%token<opType> COMPARE_OP
+%token<opType> LOGICAL_BOP
+%token<opType> LOGICAL_UOP
+%token<boolVal> TRUE
+%token<boolVal> FALSE
+%token<intVal> INT
+%token<doubleVal> DOUBLE
+%token<strVal> STRING
+%token<strVal> NAME
+
+%type<node> select select_next insert_or_select_next insert_next update_next select_object mutate_object values element key value filter operation compare_op logical_op
+%type<strVal> schema_name
 
 %%
+init: query
 
-query: select | insert | update | delete
+query: select { printNode($1); } | insert | update | delete
 
-select: SELECT L_BRACE select_next R_BRACE
+select: SELECT L_BRACE select_next R_BRACE { $$ = newQueryNode(SELECT_QUERY, NULL, $3); }
 
 insert: INSERT L_BRACE insert_or_select_next R_BRACE
 
@@ -55,10 +61,10 @@ update: UPDATE L_BRACE update_next R_BRACE
 
 delete: DELETE L_BRACE select_next R_BRACE
 
-select_next: select_object
-           | select_object COMMA select_next
-           | select_object L_BRACE select_next R_BRACE
-           | select_object L_BRACE select_next R_BRACE COMMA select_next
+select_next: select_object { $$ = newQuerySetNode(newQueryNode(SELECT_QUERY, NULL, $1)); }
+           | select_object COMMA select_next { addNextQueryToSet($1, $3); $$ = $1; }
+           | select_object L_BRACE select_next R_BRACE { addNextQueryToSet($1->right, $3); $$ = $1; }
+           | select_object L_BRACE select_next R_BRACE COMMA select_next { addNextQueryToSet($1->right, $3); $$ = $1; }
 
 insert_or_select_next: insert_next
                      | select_object L_BRACE insert_or_select_next R_BRACE
@@ -76,30 +82,35 @@ update_next: mutate_object
            | select_object L_BRACE update_next R_BRACE
            | select_object L_BRACE update_next R_BRACE COMMA update_next
 
-select_object: schema_name
-             | schema_name L_PARENTHESIS filter R_PARENTHESIS
+select_object: schema_name { $$ = newObjectNode($1, NULL, NULL); }
+             | schema_name L_PARENTHESIS filter R_PARENTHESIS { $$ = newObjectNode($1, NULL, $3); }
 
-mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS
-             | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS
+mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS { $$ = newObjectNode($1, $3, NULL); }
+             | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS { $$ = newObjectNode($1, $3, $5); }
 
-schema_name: NAME
+schema_name: NAME { $$ = $1; }
 
-values: VALUES COLON L_BRACKET element R_BRACKET
+values: VALUES COLON L_BRACKET element R_BRACKET { $$ = newValuesNode($4); }
 
-element: L_BRACE key COLON value R_BRACE
-       | element COMMA L_BRACE key COLON value R_BRACE
+element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode($2, $4)); }
+       | element COMMA L_BRACE key COLON value R_BRACE { addNextElementToSet($1, newElementSetNode(newElementNode($4, $6))); $$ = $1; }
 
-key: NAME
+key: NAME { $$ = newStrValNode($1); }
 
-value: TRUE | FALSE | INT | DOUBLE | STRING
+value: TRUE { $$ = newBoolValNode($1); }
+     | FALSE { $$ = newBoolValNode($1); }
+     | INT { $$ = newIntValNode($1); }
+     | DOUBLE { $$ = newDoubleValNode($1); }
+     | STRING { $$ = newStrValNode($1); }
 
-filter: FILTER COLON operation
+filter: FILTER COLON operation { $$ = newFilterNode($3); }
 
-operation: compare_op | logical_op
+operation: compare_op { $$ = $1; }
+         | logical_op { $$ = $1; }
 
-compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS
+compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
-logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS
-          | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS
+logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS { $$ = newOperationNode($1, $3, NULL); }
+          | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 %%

@@ -1,6 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
-#include "ast.h"
+#include "graphql_ast.h"
 
 astNode* newNode() {
     astNode* node = malloc(sizeof(astNode));
@@ -57,12 +57,11 @@ astNode* newElementNode(astNode* strNode, astNode* valNode) {
     return node;
 }
 
-astNode* newElementSetNode(astNode* elementNode, astNode* nextElementSetNode) {
+astNode* newElementSetNode(astNode* elementNode) {
     astNode* node = newNode();
     if (node) {
         node->type = ELEMENT_SET_NODE;
         node->left = elementNode;
-        node->right = nextElementSetNode;
     }
     return node;
 }
@@ -89,7 +88,7 @@ astNode* newOperationNode(nodeType type, astNode* left, astNode* right) {
 astNode* newFilterNode(astNode* operationNode) {
     astNode* node = newNode();
     if (node) {
-        node->type = FILTER_NODE
+        node->type = FILTER_NODE;
         node->left = operationNode;
     }
     return node;
@@ -99,30 +98,42 @@ astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNod
     astNode* node = newNode();
     if (node) {
         node->type = OBJECT_NODE;
-        node->name = name;
+        node->strVal = name;
         node->left = valuesNode;
         node->right = filterNode;
     }
     return node;
 }
 
-astNode* newObjectSetNode(astNode* ObjectNode, astNode* nextObjectSetNode) {
+astNode* newQuerySetNode(astNode* queryNode) {
     astNode* node = newNode();
     if (node) {
-        node->type = OBJECT_SET_NODE;
-        node->left = firstObjectNode;
-        node->right = nextObjectSetNode;
+        node->type = QUERY_SET_NODE;
+        node->left = queryNode;
     }
     return node;
 }
 
-astNode* newQueryNode(nodeType type, astNode* objectSetNode) {
+astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode) {
     astNode* node = newNode();
     if (node) {
         node->type = type;
-        node->left = objectSetNode;
+        node->left = objectNode;
+        node->right = querySetNode;
     }
     return node;
+}
+
+void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode) {
+    if (elementSetNode) {
+        elementSetNode->right = nextElementSetNode;
+    }
+}
+
+void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode) {
+    if (querySetNode) {
+        querySetNode->right = nextQuerySetNode;
+    }
 }
 
 void printNode(astNode* node) {
@@ -143,8 +154,7 @@ void printNode(astNode* node) {
                     printf("Delete\n");
                     break;
             }
-            printf("ObjectSet: ");
-            printNode(node->left);
+            printNode(node->right);
         } else if (node->type <= FILTER_NODE) {
             switch (node->type) {
                 case OBJECT_NODE:
@@ -154,11 +164,12 @@ void printNode(astNode* node) {
                     printf("Filter: ");
                     printNode(node->right);
                     break;
-                case OBJECT_SET_NODE:
-                    for (uint64_t i = 1; node->right; node = node->right, i++) {
-                        printf("Object%lu:\n", i);
+                case QUERY_SET_NODE:
+                    printf("QuerySet:\n");
+                    do {
                         printNode(node->left);
-                    }
+                        node = node->right;
+                    } while (node);
                     break;
                 case VALUES_NODE:
                     printf("ElementSet:\n");

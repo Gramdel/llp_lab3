@@ -1,5 +1,5 @@
-#ifndef _AST_H_
-#define _AST_H_
+#ifndef _GRAPHQL_AST_H_
+#define _GRAPHQL_AST_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -10,7 +10,7 @@ typedef enum nodeType {
     UPDATE_QUERY,
     DELETE_QUERY,
     OBJECT_NODE,
-    OBJECT_SET_NODE,
+    QUERY_SET_NODE,
     VALUES_NODE,
     ELEMENT_SET_NODE,
     ELEMENT_NODE,
@@ -31,6 +31,7 @@ typedef enum nodeType {
     OP_NOT,
 } nodeType;
 
+typedef struct astNode astNode;
 typedef struct astNode {
     astNode* left;
     astNode* right;
@@ -55,18 +56,24 @@ astNode* newStrValNode(const char* strVal);
 
 astNode* newElementNode(astNode* strNode, astNode* valNode);
 
-astNode* newElementSetNode(astNode* elementNode, astNode* nextElementSetNode);
+astNode* newElementSetNode(astNode* elementNode);
 
 astNode* newValuesNode(astNode* elementSetNode);
 
-astNode* newOperationNode(opType type, astNode* left, astNode* right);
+astNode* newOperationNode(nodeType type, astNode* left, astNode* right);
 
 astNode* newFilterNode(astNode* operationNode);
 
-astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNode)
+astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNode);
 
-astNode* newObjectSetNode(astNode* ObjectNode, astNode* nextObjectSetNode);
+astNode* newQuerySetNode(astNode* queryNode);
 
-astNode* newQueryNode(nodeType type, astNode* objectSetNode);
+astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode);
+
+void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode);
+
+void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode);
+
+void printNode(astNode* node);
 
 #endif

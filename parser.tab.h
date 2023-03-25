@@ -66,13 +66,12 @@ extern int yydebug;
     COMPARE_OP = 272,
     LOGICAL_BOP = 273,
     LOGICAL_UOP = 274,
-    LIKE = 275,
-    TRUE = 276,
-    FALSE = 277,
-    INT = 278,
-    DOUBLE = 279,
-    STRING = 280,
-    NAME = 281
+    TRUE = 275,
+    FALSE = 276,
+    INT = 277,
+    DOUBLE = 278,
+    STRING = 279,
+    NAME = 280
   };
 #endif
 
@@ -80,14 +79,16 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 14 "parser.y"
+#line 15 "parser.y"
 
-    bool bool_val;
-    int int_val;
-    double double_val;
-    const char* str;
+    bool boolVal;
+    int intVal;
+    double doubleVal;
+    const char* strVal;
+    astNode* node;
+    nodeType opType;
 
-#line 91 "parser.tab.h"
+#line 92 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

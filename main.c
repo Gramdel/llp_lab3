@@ -1,4 +1,4 @@
-#include <stdbool.h>
+#include "graphql_ast.h"
 #include "parser.tab.h"
 
 extern int yydebug;
