@@ -51,7 +51,7 @@ void yyerror(const char *msg) {
 %%
 init: query
 
-query: select { printNode($1); } | insert | update | delete
+query: select { printNode($1, 0); } | insert | update | delete
 
 select: SELECT L_BRACE select_next R_BRACE { $$ = newQueryNode(SELECT_QUERY, NULL, $3); }
 
@@ -61,10 +61,10 @@ update: UPDATE L_BRACE update_next R_BRACE
 
 delete: DELETE L_BRACE select_next R_BRACE
 
-select_next: select_object { $$ = newQuerySetNode(newQueryNode(SELECT_QUERY, NULL, $1)); }
-           | select_object COMMA select_next { addNextQueryToSet($1, $3); $$ = $1; }
-           | select_object L_BRACE select_next R_BRACE { addNextQueryToSet($1->right, $3); $$ = $1; }
-           | select_object L_BRACE select_next R_BRACE COMMA select_next { addNextQueryToSet($1->right, $3); $$ = $1; }
+select_next: select_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY, $1, NULL), NULL); }
+           | select_object COMMA select_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY, $1, NULL), $3); }
+           | select_object L_BRACE select_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY, $1, $3), NULL); }
+           | select_object L_BRACE select_next R_BRACE COMMA select_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY, $1, $3), $6); }
 
 insert_or_select_next: insert_next
                      | select_object L_BRACE insert_or_select_next R_BRACE

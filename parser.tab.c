@@ -1411,7 +1411,7 @@ yyreduce:
     {
   case 3:
 #line 54 "parser.y"
-              { printNode((yyvsp[0].node)); }
+              { printNode((yyvsp[0].node), 0); }
 #line 1416 "parser.tab.c"
     break;
 
@@ -1423,25 +1423,25 @@ yyreduce:
 
   case 11:
 #line 64 "parser.y"
-                           { (yyval.node) = newQuerySetNode(newQueryNode(SELECT_QUERY, NULL, (yyvsp[0].node))); }
+                           { (yyval.node) = newQuerySetNode(newQueryNode(NESTED_QUERY, (yyvsp[0].node), NULL), NULL); }
 #line 1428 "parser.tab.c"
     break;
 
   case 12:
 #line 65 "parser.y"
-                                             { addNextQueryToSet((yyvsp[-2].node), (yyvsp[0].node)); (yyval.node) = (yyvsp[-2].node); }
+                                             { (yyval.node) = newQuerySetNode(newQueryNode(NESTED_QUERY, (yyvsp[-2].node), NULL), (yyvsp[0].node)); }
 #line 1434 "parser.tab.c"
     break;
 
   case 13:
 #line 66 "parser.y"
-                                                       { addNextQueryToSet((yyvsp[-3].node)->right, (yyvsp[-1].node)); (yyval.node) = (yyvsp[-3].node); }
+                                                       { (yyval.node) = newQuerySetNode(newQueryNode(NESTED_QUERY, (yyvsp[-3].node), (yyvsp[-1].node)), NULL); }
 #line 1440 "parser.tab.c"
     break;
 
   case 14:
 #line 67 "parser.y"
-                                                                         { addNextQueryToSet((yyvsp[-5].node)->right, (yyvsp[-3].node)); (yyval.node) = (yyvsp[-5].node); }
+                                                                         { (yyval.node) = newQuerySetNode(newQueryNode(NESTED_QUERY, (yyvsp[-5].node), (yyvsp[-3].node)), (yyvsp[0].node)); }
 #line 1446 "parser.tab.c"
     break;
 

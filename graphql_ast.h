@@ -9,6 +9,7 @@ typedef enum nodeType {
     INSERT_QUERY,
     UPDATE_QUERY,
     DELETE_QUERY,
+    NESTED_QUERY,
     OBJECT_NODE,
     QUERY_SET_NODE,
     VALUES_NODE,
@@ -66,7 +67,7 @@ astNode* newFilterNode(astNode* operationNode);
 
 astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNode);
 
-astNode* newQuerySetNode(astNode* queryNode);
+astNode* newQuerySetNode(astNode* queryNode, astNode* nextQuerySetNode);
 
 astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode);
 
@@ -74,6 +75,6 @@ void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode);
 
 void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode);
 
-void printNode(astNode* node);
+void printNode(astNode* node, int32_t nestingLevel);
 
 #endif
