@@ -36,7 +36,6 @@ typedef struct astNode {
     astNode* right;
     nodeType type;
     union {
-        const char* name;
         int32_t intVal;
         double doubleVal;
         bool boolVal;
@@ -54,7 +53,7 @@ astNode* newBoolValNode(bool boolVal);
 
 astNode* newStrValNode(const char* strVal);
 
-astNode* newElementNode(const char* name, astNode* valNode);
+astNode* newElementNode(astNode* strNode, astNode* valNode);
 
 astNode* newElementSetNode(astNode* elementNode, astNode* nextElementSetNode);
 
