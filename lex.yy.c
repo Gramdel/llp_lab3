@@ -926,7 +926,7 @@ YY_RULE_SETUP
 case 21:
 YY_RULE_SETUP
 #line 31 "lexer.l"
-{ yylval.opType = OP_LIKE_NODE; return COMPARE_OP; }
+{ yylval.opType = OP_LIKE_NODE; return LIKE_OP; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP

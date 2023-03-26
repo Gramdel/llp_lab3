@@ -37,6 +37,7 @@ void yyerror(const char *msg) {
 %token VALUES
 %token FILTER
 %token<opType> COMPARE_OP
+%token<opType> LIKE_OP
 %token<opType> LOGICAL_BOP
 %token<opType> LOGICAL_UOP
 %token<boolVal> BOOL
@@ -63,6 +64,7 @@ void yyerror(const char *msg) {
 %type<node> filter
 %type<node> operation
 %type<node> compare_op
+%type<node> like_op
 %type<node> logical_op
 %type<strVal> schema_name
 
@@ -126,9 +128,12 @@ value: BOOL { $$ = newBoolValNode($1); }
 filter: FILTER COLON operation { $$ = newFilterNode($3); }
 
 operation: compare_op { $$ = $1; }
+         | like_op { $$ = $1; }
          | logical_op { $$ = $1; }
 
 compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
+
+like_op: LIKE_OP L_PARENTHESIS key COMMA STRING R_PARENTHESIS { $$ = newOperationNode($1, $3, newStrValNode($5)); }
 
 logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS { $$ = newOperationNode($1, $3, NULL); }
           | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
