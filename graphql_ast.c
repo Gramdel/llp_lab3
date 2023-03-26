@@ -105,12 +105,11 @@ astNode* newObjectNode(char* name, astNode* valuesNode, astNode* filterNode) {
     return node;
 }
 
-astNode* newQuerySetNode(astNode* queryNode, astNode* nextQuerySetNode) {
+astNode* newQuerySetNode(astNode* queryNode) {
     astNode* node = newNode();
     if (node) {
         node->type = QUERY_SET_NODE;
         node->left = queryNode;
-        node->right = nextQuerySetNode;
     }
     return node;
 }
@@ -128,6 +127,12 @@ astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode)
 void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode) {
     if (elementSetNode) {
         elementSetNode->right = nextElementSetNode;
+    }
+}
+
+void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode) {
+    if (querySetNode) {
+        querySetNode->right = nextQuerySetNode;
     }
 }
 

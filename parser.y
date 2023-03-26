@@ -68,6 +68,8 @@ void yyerror(const char *msg) {
 %type<node> logical_op
 %type<strVal> schema_name
 
+%left COMMA
+
 %%
 init: query { printNode($1, 0); destroyNode($1); YYACCEPT; }
 
@@ -84,26 +86,22 @@ update: UPDATE L_BRACE update_next R_BRACE { $$ = newQueryNode(UPDATE_QUERY_NODE
 
 delete: DELETE L_BRACE select_next R_BRACE { $$ = newQueryNode(DELETE_QUERY_NODE, NULL, $3); }
 
-select_next: select_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), NULL); }
-           | select_object COMMA select_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), $3); }
-           | select_object L_BRACE select_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), NULL); }
-           | select_object L_BRACE select_next R_BRACE COMMA select_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), $6); }
+select_next: select_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL)); }
+           | select_object L_BRACE select_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3)); }
+           | select_next COMMA select_next { addNextQueryToSet($1, $3); $$ = $1; }
 
-insert_or_select_next: insert_next { $$ = $1; }
-                     | select_object L_BRACE insert_or_select_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), NULL); }
-                     | select_object L_BRACE insert_or_select_next R_BRACE COMMA insert_or_select_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), $6); }
+insert_or_select_next: insert_next %prec COMMA { $$ = $1; }
+                     | select_object L_BRACE insert_or_select_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3)); }
+                     | insert_or_select_next COMMA insert_or_select_next { addNextQueryToSet($1, $3); $$ = $1; }
 
-insert_next: mutate_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), NULL); }
-           | mutate_object COMMA insert_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), $3); }
-           | mutate_object L_BRACE insert_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), NULL); }
-           | mutate_object L_BRACE insert_next R_BRACE COMMA insert_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), $6); }
+insert_next: mutate_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL)); }
+           | mutate_object L_BRACE insert_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3)); }
+           | insert_next COMMA insert_next { addNextQueryToSet($1, $3); $$ = $1; }
 
-update_next: mutate_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), NULL); }
-           | mutate_object COMMA update_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL), $3); }
-           | mutate_object L_BRACE update_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), NULL); }
-           | mutate_object L_BRACE update_next R_BRACE COMMA update_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), $6); }
-           | select_object L_BRACE update_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), NULL); }
-           | select_object L_BRACE update_next R_BRACE COMMA update_next { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3), $6); }
+update_next: mutate_object { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, NULL)); }
+           | mutate_object L_BRACE update_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3)); }
+           | select_object L_BRACE update_next R_BRACE { $$ = newQuerySetNode(newQueryNode(NESTED_QUERY_NODE, $1, $3)); }
+           | update_next COMMA update_next { addNextQueryToSet($1, $3); $$ = $1; }
 
 select_object: schema_name { $$ = newObjectNode($1, NULL, NULL); }
              | schema_name L_PARENTHESIS filter R_PARENTHESIS { $$ = newObjectNode($1, NULL, $3); }
@@ -116,7 +114,7 @@ schema_name: NAME { $$ = $1; }
 values: VALUES COLON L_BRACKET element R_BRACKET { $$ = newValuesNode($4); }
 
 element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode($2, $4)); }
-       | element COMMA L_BRACE key COLON value R_BRACE { addNextElementToSet($1, newElementSetNode(newElementNode($4, $6))); $$ = $1; }
+       | element COMMA element { addNextElementToSet($1, $3); $$ = $1; }
 
 key: NAME { $$ = newStrValNode($1); }
 

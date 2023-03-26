@@ -10,10 +10,10 @@ typedef enum nodeType {
     UPDATE_QUERY_NODE,
     DELETE_QUERY_NODE,
     NESTED_QUERY_NODE,
-    QUERY_SET_NODE, // узел списка запросов
+    QUERY_SET_NODE, // узел списка запросов; в node->left - query, в node->right - указатель на следующий узел в списке
     OBJECT_NODE,
     VALUES_NODE,
-    ELEMENT_SET_NODE, // узел списка элементов
+    ELEMENT_SET_NODE, // узел списка элементов; в node->left - element,  в node->right - указатель на следующий узел в списке
     ELEMENT_NODE,
     INT_VAL_NODE,
     DOUBLE_VAL_NODE,
@@ -67,11 +67,13 @@ astNode* newFilterNode(astNode* operationNode);
 
 astNode* newObjectNode(char* name, astNode* valuesNode, astNode* filterNode);
 
-astNode* newQuerySetNode(astNode* queryNode, astNode* nextQuerySetNode);
+astNode* newQuerySetNode(astNode* queryNode);
 
 astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode);
 
 void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode);
+
+void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode);
 
 void destroyNode(astNode* node);
 

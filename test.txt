@@ -44,6 +44,14 @@ insert {
     }
 }
 
+// true
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child(values: [{rootInt1 : 111}]),
+        child(values: [{rootInt1 : 111}])
+    }
+}
+
 // false
 insert {
     root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
