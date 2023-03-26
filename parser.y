@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include "graphql_ast.h"
 
+#define MAX_NAME_LENGTH 12
+
 extern int yylex();
 extern int yylineno;
 
@@ -109,14 +111,26 @@ select_object: schema_name { $$ = newObjectNode($1, NULL, NULL); }
 mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS { $$ = newObjectNode($1, $3, NULL); }
              | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS { $$ = newObjectNode($1, $3, $5); }
 
-schema_name: NAME { $$ = $1; }
+schema_name: NAME {
+                      if(strlen($1) > MAX_NAME_LENGTH) {
+                          yyerror("name of schema is too long");
+                          YYABORT;
+                      }
+                      $$ = $1;
+                  }
 
 values: VALUES COLON L_BRACKET element R_BRACKET { $$ = newValuesNode($4); }
 
 element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode($2, $4)); }
        | element COMMA element { addNextElementToSet($1, $3); $$ = $1; }
 
-key: NAME { $$ = newStrValNode($1); }
+key: NAME {
+              if(strlen($1) > MAX_NAME_LENGTH) {
+                  yyerror("key is too long");
+                  YYABORT;
+              }
+              $$ = newKeyNode($1);
+          }
 
 value: BOOL { $$ = newBoolValNode($1); }
      | INT { $$ = newIntValNode($1); }
@@ -130,8 +144,10 @@ operation: compare_op { $$ = $1; }
          | logical_op { $$ = $1; }
 
 compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
+          | COMPARE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 like_op: LIKE_OP L_PARENTHESIS key COMMA STRING R_PARENTHESIS { $$ = newOperationNode($1, $3, newStrValNode($5)); }
+       | LIKE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS { $$ = newOperationNode($1, $3, NULL); }
           | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }

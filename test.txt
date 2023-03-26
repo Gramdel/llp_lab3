@@ -63,7 +63,7 @@ insert {
 
 // true
 select {
-    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, 1000)))
+    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2)))
 }
 
 // false

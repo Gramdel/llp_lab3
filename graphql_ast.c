@@ -47,11 +47,20 @@ astNode* newStrValNode(char* strVal) {
     return node;
 }
 
-astNode* newElementNode(astNode* strNode, astNode* valNode) {
+astNode* newKeyNode(char* key) {
+    astNode* node = newNode();
+    if (node) {
+        node->type = KEY_NODE;
+        node->strVal = key;
+    }
+    return node;
+}
+
+astNode* newElementNode(astNode* keyNode, astNode* valNode) {
     astNode* node = newNode();
     if (node) {
         node->type = ELEMENT_NODE;
-        node->left = strNode;
+        node->left = keyNode;
         node->right = valNode;
     }
     return node;
@@ -140,7 +149,7 @@ void destroyNode(astNode* node) {
     if (node) {
         destroyNode(node->left);
         destroyNode(node->right);
-        if ((node->type == STR_VAL_NODE || node->type == OBJECT_NODE) && node->strVal) {
+        if ((node->type == STR_VAL_NODE || node->type == KEY_NODE || node->type == OBJECT_NODE) && node->strVal) {
             free(node->strVal);
         }
         free(node);
@@ -229,45 +238,80 @@ void printNode(astNode* node, int32_t nestingLevel) {
                 break;
             case OP_EQ_NODE:
                 printf("%*sOperationType: Equal\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_NEQ_NODE:
                 printf("%*sOperationType: NotEqual\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_GT_NODE:
                 printf("%*sOperationType: Greater\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_GTE_NODE:
                 printf("%*sOperationType: GreaterOrEqual\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_LE_NODE:
                 printf("%*sOperationType: Less\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_LEE_NODE:
                 printf("%*sOperationType: LessOrEqual\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_LIKE_NODE:
                 printf("%*sOperationType: Like\n", nestingLevel, "");
-                printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
-                printf("%*sValue:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                if (node->right->type != KEY_NODE) {
+                    printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sValue:\n", nestingLevel, "");
+                    printNode(node->right, nestingLevel + 2);
+                } else {
+                    printf("%*sKey1: %s\n", nestingLevel, "", node->left->strVal);
+                    printf("%*sKey2: %s\n", nestingLevel, "", node->right->strVal);
+                }
                 break;
             case OP_AND_NODE:
                 printf("%*sOperationType: And\n", nestingLevel, "");

@@ -15,6 +15,7 @@ typedef enum nodeType {
     VALUES_NODE,
     ELEMENT_SET_NODE, // узел списка элементов; в node->left - element,  в node->right - указатель на следующий узел в списке
     ELEMENT_NODE,
+    KEY_NODE,
     INT_VAL_NODE,
     DOUBLE_VAL_NODE,
     BOOL_VAL_NODE,
@@ -55,7 +56,9 @@ astNode* newBoolValNode(bool boolVal);
 
 astNode* newStrValNode(char* strVal);
 
-astNode* newElementNode(astNode* strNode, astNode* valNode);
+astNode* newKeyNode(char* key);
+
+astNode* newElementNode(astNode* keyNode, astNode* valNode);
 
 astNode* newElementSetNode(astNode* elementNode);
 
