@@ -22,6 +22,7 @@ update                    { return UPDATE; }
 delete                    { return DELETE; }
 values                    { return VALUES; }
 filter                    { return FILTER; }
+join                      { return JOIN; }
 eq                        { yylval.opType = OP_EQ_NODE; return COMPARE_OP; }
 neq                       { yylval.opType = OP_NEQ_NODE; return COMPARE_OP; }
 gt                        { yylval.opType = OP_GT_NODE; return COMPARE_OP; }
@@ -38,6 +39,7 @@ false                     { yylval.boolVal = false; return BOOL; }
 [+-]?[0-9]*\.[0-9]*       { yylval.doubleVal = atof(yytext); return DOUBLE; }
 \"[^\"]*\"                { yylval.strVal = strdup(yytext); return STRING; }
 [A-Za-z_][A-Za-z0-9_]*    { yylval.strVal = strdup(yytext); return NAME; }
+f\.                       { return FOREIGN; }
 \n                        { /* Считываем перенос строки, чтобы работал yylineno */ }
 .                         { /* Игнорируем всё остальное */ }
 %%

@@ -38,6 +38,7 @@ void yyerror(const char *msg) {
 %token DELETE
 %token VALUES
 %token FILTER
+%token JOIN
 %token<opType> COMPARE_OP
 %token<opType> LIKE_OP
 %token<opType> LOGICAL_BOP
@@ -47,6 +48,7 @@ void yyerror(const char *msg) {
 %token<doubleVal> DOUBLE
 %token<strVal> STRING
 %token<strVal> NAME
+%token FOREIGN
 
 %type<node> query
 %type<node> select
@@ -62,8 +64,10 @@ void yyerror(const char *msg) {
 %type<node> values
 %type<node> element
 %type<node> key
+%type<node> foreign_key
 %type<node> value
 %type<node> filter
+%type<node> join
 %type<node> operation
 %type<node> compare_op
 %type<node> like_op
@@ -111,33 +115,26 @@ select_object: schema_name { $$ = newObjectNode($1, NULL, NULL); }
 mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS { $$ = newObjectNode($1, $3, NULL); }
              | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS { $$ = newObjectNode($1, $3, $5); }
 
-schema_name: NAME {
-                      if(strlen($1) > MAX_NAME_LENGTH) {
-                          yyerror("name of schema is too long");
-                          YYABORT;
-                      }
-                      $$ = $1;
-                  }
+schema_name: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror("name of schema is too long"); YYABORT; } $$ = $1; }
 
 values: VALUES COLON L_BRACKET element R_BRACKET { $$ = newValuesNode($4); }
 
 element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode($2, $4)); }
        | element COMMA element { addNextElementToSet($1, $3); $$ = $1; }
 
-key: NAME {
-              if(strlen($1) > MAX_NAME_LENGTH) {
-                  yyerror("key is too long");
-                  YYABORT;
-              }
-              $$ = newKeyNode($1);
-          }
+key: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror("key is too long"); YYABORT; } $$ = newKeyNode($1); }
+
+foreign_key: FOREIGN key { $$ = newForeignKeyNode($2); }
 
 value: BOOL { $$ = newBoolValNode($1); }
      | INT { $$ = newIntValNode($1); }
      | DOUBLE { $$ = newDoubleValNode($1); }
      | STRING { $$ = newStrValNode($1); }
 
-filter: FILTER COLON operation { $$ = newFilterNode($3); }
+filter: FILTER COLON operation { if(checkJoin($3)) { yyerror("use of foreign key without join"); YYABORT; } $$ = newFilterNode(NULL, $3); }
+      | FILTER COLON L_BRACKET join COMMA operation R_BRACKET { if(!checkJoin($6)) { yyerror("useless join"); YYABORT; } $$ = newFilterNode($4, $6); }
+
+join: JOIN L_PARENTHESIS schema_name R_PARENTHESIS  { $$ = newJoinNode($3); }
 
 operation: compare_op { $$ = $1; }
          | like_op { $$ = $1; }
@@ -145,9 +142,11 @@ operation: compare_op { $$ = $1; }
 
 compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
           | COMPARE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
+          | COMPARE_OP L_PARENTHESIS key COMMA foreign_key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 like_op: LIKE_OP L_PARENTHESIS key COMMA STRING R_PARENTHESIS { $$ = newOperationNode($1, $3, newStrValNode($5)); }
        | LIKE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
+       | LIKE_OP L_PARENTHESIS key COMMA foreign_key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS { $$ = newOperationNode($1, $3, NULL); }
           | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }

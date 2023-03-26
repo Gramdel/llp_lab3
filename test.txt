@@ -56,6 +56,21 @@ select {
     root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2)))
 }
 
+// true
+select {
+    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2))])
+}
+
+// false
+select {
+    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2))])
+}
+
+// false
+select {
+    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2)))
+}
+
 // false
 select {
     root(values: [{childBool : true}], filter: eq(rootInt1, "value"))
