@@ -1,4 +1,4 @@
-# Low-level programming lab1
+# Low-level programming lab2
 ### Вариант 4: GraphQL
 #### Сборка
 + Linux:
