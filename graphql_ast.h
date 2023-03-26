@@ -5,31 +5,31 @@
 #include <stdbool.h>
 
 typedef enum nodeType {
-    SELECT_QUERY,
-    INSERT_QUERY,
-    UPDATE_QUERY,
-    DELETE_QUERY,
-    NESTED_QUERY,
+    SELECT_QUERY_NODE,
+    INSERT_QUERY_NODE,
+    UPDATE_QUERY_NODE,
+    DELETE_QUERY_NODE,
+    NESTED_QUERY_NODE,
+    QUERY_SET_NODE, // узел списка запросов
     OBJECT_NODE,
-    QUERY_SET_NODE,
     VALUES_NODE,
-    ELEMENT_SET_NODE,
+    ELEMENT_SET_NODE, // узел списка элементов
     ELEMENT_NODE,
-    INT_NODE,
-    DOUBLE_NODE,
-    BOOL_NODE,
-    STR_NODE,
+    INT_VAL_NODE,
+    DOUBLE_VAL_NODE,
+    BOOL_VAL_NODE,
+    STR_VAL_NODE,
     FILTER_NODE,
-    OP_EQ,
-    OP_NEQ,
-    OP_GT,
-    OP_GTE,
-    OP_LE,
-    OP_LEE,
-    OP_LIKE,
-    OP_AND,
-    OP_OR,
-    OP_NOT,
+    OP_EQ_NODE,
+    OP_NEQ_NODE,
+    OP_GT_NODE,
+    OP_GTE_NODE,
+    OP_LE_NODE,
+    OP_LEE_NODE,
+    OP_LIKE_NODE,
+    OP_AND_NODE,
+    OP_OR_NODE,
+    OP_NOT_NODE,
 } nodeType;
 
 typedef struct astNode astNode;
@@ -41,7 +41,7 @@ typedef struct astNode {
         int32_t intVal;
         double doubleVal;
         bool boolVal;
-        const char* strVal;
+        char* strVal;
     };
 } astNode;
 
@@ -53,7 +53,7 @@ astNode* newDoubleValNode(double doubleVal);
 
 astNode* newBoolValNode(bool boolVal);
 
-astNode* newStrValNode(const char* strVal);
+astNode* newStrValNode(char* strVal);
 
 astNode* newElementNode(astNode* strNode, astNode* valNode);
 
@@ -65,7 +65,7 @@ astNode* newOperationNode(nodeType type, astNode* left, astNode* right);
 
 astNode* newFilterNode(astNode* operationNode);
 
-astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNode);
+astNode* newObjectNode(char* name, astNode* valuesNode, astNode* filterNode);
 
 astNode* newQuerySetNode(astNode* queryNode, astNode* nextQuerySetNode);
 
@@ -73,7 +73,7 @@ astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode)
 
 void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode);
 
-void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode);
+void destroyNode(astNode* node);
 
 void printNode(astNode* node, int32_t nestingLevel);
 

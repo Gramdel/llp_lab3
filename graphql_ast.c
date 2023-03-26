@@ -14,7 +14,7 @@ astNode* newNode() {
 astNode* newIntValNode(int32_t intVal) {
     astNode* node = newNode();
     if (node) {
-        node->type = INT_NODE;
+        node->type = INT_VAL_NODE;
         node->intVal = intVal;
     }
     return node;
@@ -23,7 +23,7 @@ astNode* newIntValNode(int32_t intVal) {
 astNode* newDoubleValNode(double doubleVal) {
     astNode* node = newNode();
     if (node) {
-        node->type = DOUBLE_NODE;
+        node->type = DOUBLE_VAL_NODE;
         node->doubleVal = doubleVal;
     }
     return node;
@@ -32,16 +32,16 @@ astNode* newDoubleValNode(double doubleVal) {
 astNode* newBoolValNode(bool boolVal) {
     astNode* node = newNode();
     if (node) {
-        node->type = BOOL_NODE;
+        node->type = BOOL_VAL_NODE;
         node->boolVal = boolVal;
     }
     return node;
 }
 
-astNode* newStrValNode(const char* strVal) {
+astNode* newStrValNode(char* strVal) {
     astNode* node = newNode();
     if (node) {
-        node->type = STR_NODE;
+        node->type = STR_VAL_NODE;
         node->strVal = strVal;
     }
     return node;
@@ -94,7 +94,7 @@ astNode* newFilterNode(astNode* operationNode) {
     return node;
 }
 
-astNode* newObjectNode(const char* name, astNode* valuesNode, astNode* filterNode) {
+astNode* newObjectNode(char* name, astNode* valuesNode, astNode* filterNode) {
     astNode* node = newNode();
     if (node) {
         node->type = OBJECT_NODE;
@@ -131,36 +131,41 @@ void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode) {
     }
 }
 
-void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode) {
-    if (querySetNode) {
-        querySetNode->right = nextQuerySetNode;
+void destroyNode(astNode* node) {
+    if (node) {
+        destroyNode(node->left);
+        destroyNode(node->right);
+        if ((node->type == STR_VAL_NODE || node->type == OBJECT_NODE) && node->strVal) {
+            free(node->strVal);
+        }
+        free(node);
     }
 }
 
 void printNode(astNode* node, int32_t nestingLevel) {
     if (node) {
         switch (node->type) {
-            case SELECT_QUERY:
+            case SELECT_QUERY_NODE:
                 printf("QueryType: Select\n");
                 printf("QuerySet: ");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case INSERT_QUERY:
+            case INSERT_QUERY_NODE:
                 printf("QueryType: Insert\n");
                 printf("QuerySet: ");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case UPDATE_QUERY:
+            case UPDATE_QUERY_NODE:
                 printf("QueryType: Update\n");
                 printf("QuerySet: ");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case DELETE_QUERY:
+            case DELETE_QUERY_NODE:
                 printf("QueryType: Delete\n");
                 printf("QuerySet: ");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case NESTED_QUERY:
+            case NESTED_QUERY_NODE:
                 printf("%*sObject:\n", nestingLevel, "");
                 printNode(node->left, nestingLevel + 2);
                 printf("%*sQuerySet: ", nestingLevel, "");
@@ -197,19 +202,19 @@ void printNode(astNode* node, int32_t nestingLevel) {
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case INT_NODE:
+            case INT_VAL_NODE:
                 printf("%*sValueType: Integer\n", nestingLevel, "");
                 printf("%*sData: %d\n", nestingLevel, "", node->intVal);
                 break;
-            case DOUBLE_NODE:
+            case DOUBLE_VAL_NODE:
                 printf("%*sValueType: Double\n", nestingLevel, "");
                 printf("%*sData: %f\n", nestingLevel, "", node->doubleVal);
                 break;
-            case BOOL_NODE:
+            case BOOL_VAL_NODE:
                 printf("%*sValueType: Boolean\n", nestingLevel, "");
                 printf("%*sData: %s\n", nestingLevel, "", node->boolVal ? "true" : "false");
                 break;
-            case STR_NODE:
+            case STR_VAL_NODE:
                 printf("%*sValueType: String\n", nestingLevel, "");
                 printf("%*sData: %s\n", nestingLevel, "", node->strVal);
                 break;
@@ -217,63 +222,63 @@ void printNode(astNode* node, int32_t nestingLevel) {
                 printf("\n%*sOperation:\n", nestingLevel, "");
                 printNode(node->left, nestingLevel + 2);
                 break;
-            case OP_EQ:
+            case OP_EQ_NODE:
                 printf("%*sOperationType: Equal\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_NEQ:
+            case OP_NEQ_NODE:
                 printf("%*sOperationType: NotEqual\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_GT:
+            case OP_GT_NODE:
                 printf("%*sOperationType: Greater\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_GTE:
+            case OP_GTE_NODE:
                 printf("%*sOperationType: GreaterOrEqual\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_LE:
+            case OP_LE_NODE:
                 printf("%*sOperationType: Less\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_LEE:
+            case OP_LEE_NODE:
                 printf("%*sOperationType: LessOrEqual\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_LIKE:
+            case OP_LIKE_NODE:
                 printf("%*sOperationType: Like\n", nestingLevel, "");
                 printf("%*sKey: %s\n", nestingLevel, "", node->left->strVal);
                 printf("%*sValue:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_AND:
+            case OP_AND_NODE:
                 printf("%*sOperationType: And\n", nestingLevel, "");
                 printf("%*sOperation1:\n", nestingLevel, "");
                 printNode(node->left, nestingLevel + 2);
                 printf("%*sOperation2:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_OR:
+            case OP_OR_NODE:
                 printf("%*sOperationType: Or\n", nestingLevel, "");
                 printf("%*sOperation1:\n", nestingLevel, "");
                 printNode(node->left, nestingLevel + 2);
                 printf("%*sOperation2:\n", nestingLevel, "");
                 printNode(node->right, nestingLevel + 2);
                 break;
-            case OP_NOT:
+            case OP_NOT_NODE:
                 printf("%*sOperationType: Not\n", nestingLevel, "");
                 printf("%*sOperation:\n", nestingLevel, "");
                 printNode(node->left, nestingLevel + 2);

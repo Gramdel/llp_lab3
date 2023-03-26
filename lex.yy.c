@@ -896,62 +896,62 @@ YY_RULE_SETUP
 case 15:
 YY_RULE_SETUP
 #line 25 "lexer.l"
-{ yylval.opType = OP_EQ; return COMPARE_OP; }
+{ yylval.opType = OP_EQ_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
 #line 26 "lexer.l"
-{ yylval.opType = OP_NEQ; return COMPARE_OP; }
+{ yylval.opType = OP_NEQ_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
 #line 27 "lexer.l"
-{ yylval.opType = OP_GT; return COMPARE_OP; }
+{ yylval.opType = OP_GT_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
 #line 28 "lexer.l"
-{ yylval.opType = OP_GTE; return COMPARE_OP; }
+{ yylval.opType = OP_GTE_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
 #line 29 "lexer.l"
-{ yylval.opType = OP_LE; return COMPARE_OP; }
+{ yylval.opType = OP_LE_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
 #line 30 "lexer.l"
-{ yylval.opType = OP_LEE; return COMPARE_OP; }
+{ yylval.opType = OP_LEE_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
 #line 31 "lexer.l"
-{ yylval.opType = OP_LIKE; return COMPARE_OP; }
+{ yylval.opType = OP_LIKE_NODE; return COMPARE_OP; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
 #line 32 "lexer.l"
-{ yylval.opType = OP_AND; return LOGICAL_BOP; }
+{ yylval.opType = OP_AND_NODE; return LOGICAL_BOP; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
 #line 33 "lexer.l"
-{ yylval.opType = OP_OR; return LOGICAL_BOP; }
+{ yylval.opType = OP_OR_NODE; return LOGICAL_BOP; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
 #line 34 "lexer.l"
-{ yylval.opType = OP_NOT; return LOGICAL_UOP; }
+{ yylval.opType = OP_NOT_NODE; return LOGICAL_UOP; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
 #line 35 "lexer.l"
-{ yylval.boolVal = true; return TRUE; }
+{ yylval.boolVal = true; return BOOL; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
 #line 36 "lexer.l"
-{ yylval.boolVal = false; return FALSE; }
+{ yylval.boolVal = false; return BOOL; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
