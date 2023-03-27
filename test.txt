@@ -1,0 +1,142 @@
+// TEST INSERT
+
+// false
+insert {
+    root
+}
+
+// false
+insert {
+    root(values: [])
+}
+
+// false
+insert {
+    root(values: [{}])
+}
+
+// true
+insert {
+    root(values: [{rootInt1 : 111}])
+}
+
+// false
+insert {
+    root(values: [{rootInt1 : 111}]),
+    child
+}
+
+// false
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child
+    }
+}
+
+// true
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child(values: [{rootInt1 : 111}])
+    },
+    child(values: [{childBool : true}])
+}
+
+// true
+insert {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child(values: [{rootInt1 : 111}]),
+        child(values: [{rootInt1 : 111}])
+    }
+}
+
+// TEST SELECT
+
+// true
+select {
+    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2)))
+}
+
+// true
+select {
+    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2))])
+}
+
+// false
+select {
+    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2))])
+}
+
+// false
+select {
+    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2)))
+}
+
+// false
+select {
+    root(values: [{childBool : true}], filter: eq(rootInt1, "value"))
+}
+
+// true
+select {
+    root {
+        child
+    },
+    grChild
+}
+
+// TEST UPDATE
+
+// false
+update {
+    root(values: [{rootInt1 : 111}, {rootInt2 : -999}], filter: eq(rootInt1, "value")) {
+        child
+    }
+}
+
+// true
+update {
+    root {
+        child(values: [{childBool : true}])
+    }
+}
+
+// true
+update {
+    root(filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}]) {
+            grChild {
+                grGrChild(values: [{grGrChdDoubl : 505.505}])
+            }
+        }
+    }
+}
+
+// true
+update {
+    root(filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}]) {
+            grChild {
+                grGrChild(values: [{grGrChdDoubl : 505.505}])
+            }
+        }
+    },
+    root(filter: eq(rootInt1, "value")) {
+        child(values: [{childBool : true}])
+    },
+    grGrChild(values: [{grGrChdDoubl : 505.505}])
+}
+
+// TEST DELETE
+
+// false
+delete {
+    root(values: [{childBool : true}], filter: eq(rootInt1, "value"))
+}
+
+// true
+delete {
+    root {
+        child
+    },
+    grChild
+}
