@@ -1,5 +1,6 @@
 #include "graphql_ast.h"
 #include "parser.tab.h"
+#include <glib.h>
 
 int main() {
     astNode* tree;

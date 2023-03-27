@@ -1,3 +1,7 @@
+GLIB = $(pkg-config --cflags --libs glib-2.0)
+
+THRIFT = $(pkg-config --cflags --libs thrift)
+
 all: main
 
 clean:
@@ -13,9 +17,9 @@ lexer: lexer.l
 	flex lexer.l
 
 main: parser lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o main
+	gcc parser.tab.c lex.yy.c graphql_ast.c main.c $(GLIB) $(THRIFT) -o main
 
 debug: parser_debug lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o debug
+	gcc parser.tab.c lex.yy.c graphql_ast.c main.c $(GLIB) $(THRIFT) -o debug
 
 .PHONY: all clean parser parser_debug lexer

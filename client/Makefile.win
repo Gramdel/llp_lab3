@@ -1,3 +1,7 @@
+GLIB = -IC:/msys64/mingw64/bin/../include/glib-2.0 -IC:/msys64/mingw64/bin/../lib/glib-2.0/include -IC:/msys64/mingw64/bin/../include -LC:/msys64/mingw64/bin/../lib -lglib-2.0 -lintl
+
+THRIFT = -IC:/msys64/mingw64/bin/../include -LC:/msys64/mingw64/bin/../lib -lthrift
+
 all: main
 
 clean:
@@ -13,9 +17,9 @@ lexer: lexer.l
 	flex lexer.l
 
 main: parser lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o main
+	gcc parser.tab.c lex.yy.c graphql_ast.c ../gen-c_glib/structs_types.c main.c $(GLIB) $(THRIFT) -o main
 
 debug: parser_debug lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c -o debug
+	gcc parser.tab.c lex.yy.c graphql_ast.c ../gen-c_glib/structs_types.c main.c $(GLIB) $(THRIFT) -o debug
 
 .PHONY: all clean parser parser_debug lexer
