@@ -10,10 +10,12 @@
 extern int yylex();
 extern int yylineno;
 
-void yyerror(const char *msg) {
+void yyerror(astNode** tree, const char *msg) {
     fprintf(stderr, "Error on line %d: %s\n", yylineno, msg);
 }
 %}
+
+%parse-param {astNode** tree}
 
 %union {
     bool boolVal;
@@ -77,7 +79,7 @@ void yyerror(const char *msg) {
 %left COMMA
 
 %%
-init: query { printNode($1, 0); destroyNode($1); YYACCEPT; }
+init: query { *tree = $1; YYACCEPT; }
 
 query: select { $$ = $1; }
      | insert { $$ = $1; }
@@ -115,14 +117,14 @@ select_object: schema_name { $$ = newObjectNode($1, NULL, NULL); }
 mutate_object: schema_name L_PARENTHESIS values R_PARENTHESIS { $$ = newObjectNode($1, $3, NULL); }
              | schema_name L_PARENTHESIS values COMMA filter R_PARENTHESIS { $$ = newObjectNode($1, $3, $5); }
 
-schema_name: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror("name of schema is too long"); YYABORT; } $$ = $1; }
+schema_name: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror(tree, "name of schema is too long"); YYABORT; } $$ = $1; }
 
 values: VALUES COLON L_BRACKET element R_BRACKET { $$ = newValuesNode($4); }
 
 element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode($2, $4)); }
        | element COMMA element { addNextElementToSet($1, $3); $$ = $1; }
 
-key: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror("key is too long"); YYABORT; } $$ = newKeyNode($1); }
+key: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror(tree, "key is too long"); YYABORT; } $$ = newKeyNode($1); }
 
 foreign_key: FOREIGN key { $$ = newForeignKeyNode($2); }
 
@@ -131,8 +133,8 @@ value: BOOL { $$ = newBoolValNode($1); }
      | DOUBLE { $$ = newDoubleValNode($1); }
      | STRING { $$ = newStrValNode($1); }
 
-filter: FILTER COLON operation { if(checkJoin($3)) { yyerror("use of foreign key without join"); YYABORT; } $$ = newFilterNode(NULL, $3); }
-      | FILTER COLON L_BRACKET join COMMA operation R_BRACKET { if(!checkJoin($6)) { yyerror("useless join"); YYABORT; } $$ = newFilterNode($4, $6); }
+filter: FILTER COLON operation { if(checkJoin($3)) { yyerror(tree, "use of foreign key without join"); YYABORT; } $$ = newFilterNode(NULL, $3); }
+      | FILTER COLON L_BRACKET join COMMA operation R_BRACKET { if(!checkJoin($6)) { yyerror(tree, "useless join"); YYABORT; } $$ = newFilterNode($4, $6); }
 
 join: JOIN L_PARENTHESIS schema_name R_PARENTHESIS  { $$ = newJoinNode($3); }
 

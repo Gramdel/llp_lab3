@@ -1,12 +1,12 @@
 #include "graphql_ast.h"
 #include "parser.tab.h"
 
-extern int yydebug;
-
 int main() {
-    if (YYDEBUG == 1) {
-        yydebug = 1;
+    astNode* tree;
+    int code = yyparse(&tree);
+    if (code == 0) {
+        printNode(tree, 0);
     }
-	yyparse();
+    destroyNode(tree);
 	return 0;
 }
