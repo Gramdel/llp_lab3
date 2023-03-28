@@ -1,4 +1,4 @@
-enum __nodeType {
+enum nodeType_t {
     SELECT_QUERY_NODE,
     INSERT_QUERY_NODE,
     UPDATE_QUERY_NODE,
@@ -29,16 +29,20 @@ enum __nodeType {
     OP_NOT_NODE,
 }
 
-union __value {
+union value_t {
     1: i32 intVal;
     2: double doubleVal;
     3: bool boolVal;
     4: string strVal;
 }
 
-struct __astNode {
-    1: __astNode left;
-    2: __astNode right;
-    3: __nodeType type;
-    4: __value val;
+struct astNode_t {
+    1: astNode_t left;
+    2: astNode_t right;
+    3: nodeType_t type;
+    4: value_t val;
+}
+
+service zgdbService {
+	string execute(1: astNode_t tree);
 }
