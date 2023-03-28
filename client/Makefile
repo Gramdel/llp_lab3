@@ -1,6 +1,4 @@
-GLIB = $(pkg-config --cflags --libs glib-2.0)
-
-THRIFT = $(pkg-config --cflags --libs thrift)
+THRIFT := `pkg-config --cflags --libs thrift_c_glib`
 
 all: main
 
@@ -17,9 +15,9 @@ lexer: lexer.l
 	flex lexer.l
 
 main: parser lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c $(GLIB) $(THRIFT) -o main
+	gcc parser.tab.c lex.yy.c graphql_ast.c ../gen-c_glib/structs_types.c main.c $(THRIFT) -o main
 
 debug: parser_debug lexer graphql_ast.c main.c
-	gcc parser.tab.c lex.yy.c graphql_ast.c main.c $(GLIB) $(THRIFT) -o debug
+	gcc parser.tab.c lex.yy.c graphql_ast.c ../gen-c_glib/structs_types.c main.c $(THRIFT) -o debug
 
 .PHONY: all clean parser parser_debug lexer
