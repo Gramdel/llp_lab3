@@ -20,7 +20,7 @@ int main() {
     ThriftSocket* socket = g_object_new (THRIFT_TYPE_SOCKET, "hostname", "localhost", "port", 9090, NULL);
     ThriftTransport* transport = g_object_new (THRIFT_TYPE_BUFFERED_TRANSPORT, "transport", socket, NULL);
     ThriftProtocol* protocol  = g_object_new (THRIFT_TYPE_BINARY_PROTOCOL, "transport", transport, NULL);
-    zgdbServiceIf* client = g_object_new (TYPE_ZGDB_SERVICE_CLIENT, "input_protocol",  protocol, "output_protocol", protocol, NULL);
+    ZgdbServiceIf* client = g_object_new (TYPE_ZGDB_SERVICE_CLIENT, "input_protocol",  protocol, "output_protocol", protocol, NULL);
     GError *error = NULL;
 
     thrift_transport_open (transport, &error);

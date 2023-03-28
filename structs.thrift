@@ -43,6 +43,6 @@ struct astNode_t {
     4: value_t val;
 }
 
-service zgdbService {
+service ZgdbService {
 	string execute(1: astNode_t tree);
 }

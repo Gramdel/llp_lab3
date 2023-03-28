@@ -825,7 +825,7 @@ ast_node_t_get_type (void)
 
 /* constants */
 
-enum _zgdbServiceExecuteArgsProperties
+enum _ZgdbServiceExecuteArgsProperties
 {
   PROP_ZGDB_SERVICE_EXECUTE_ARGS_0,
   PROP_ZGDB_SERVICE_EXECUTE_ARGS_TREE
@@ -842,7 +842,7 @@ zgdb_service_execute_args_read (ThriftStruct *object, ThriftProtocol *protocol, 
   gint16 fid;
   guint32 len = 0;
   gpointer data = NULL;
-  zgdbServiceExecuteArgs * this_object = ZGDB_SERVICE_EXECUTE_ARGS(object);
+  ZgdbServiceExecuteArgs * this_object = ZGDB_SERVICE_EXECUTE_ARGS(object);
 
   /* satisfy -Wall in case these aren't used */
   THRIFT_UNUSED_VAR (len);
@@ -919,9 +919,9 @@ zgdb_service_execute_args_write (ThriftStruct *object, ThriftProtocol *protocol,
   gint32 ret;
   gint32 xfer = 0;
 
-  zgdbServiceExecuteArgs * this_object = ZGDB_SERVICE_EXECUTE_ARGS(object);
+  ZgdbServiceExecuteArgs * this_object = ZGDB_SERVICE_EXECUTE_ARGS(object);
   THRIFT_UNUSED_VAR (this_object);
-  if ((ret = thrift_protocol_write_struct_begin (protocol, "zgdbServiceExecuteArgs", error)) < 0)
+  if ((ret = thrift_protocol_write_struct_begin (protocol, "ZgdbServiceExecuteArgs", error)) < 0)
     return -1;
   xfer += ret;
   if ((ret = thrift_protocol_write_field_begin (protocol, "tree", T_STRUCT, 1, error)) < 0)
@@ -950,7 +950,7 @@ zgdb_service_execute_args_set_property (GObject *object,
                                         const GValue *value,
                                         GParamSpec *pspec)
 {
-  zgdbServiceExecuteArgs *self = ZGDB_SERVICE_EXECUTE_ARGS (object);
+  ZgdbServiceExecuteArgs *self = ZGDB_SERVICE_EXECUTE_ARGS (object);
 
   switch (property_id)
   {
@@ -973,7 +973,7 @@ zgdb_service_execute_args_get_property (GObject *object,
                                         GValue *value,
                                         GParamSpec *pspec)
 {
-  zgdbServiceExecuteArgs *self = ZGDB_SERVICE_EXECUTE_ARGS (object);
+  ZgdbServiceExecuteArgs *self = ZGDB_SERVICE_EXECUTE_ARGS (object);
 
   switch (property_id)
   {
@@ -988,7 +988,7 @@ zgdb_service_execute_args_get_property (GObject *object,
 }
 
 static void 
-zgdb_service_execute_args_instance_init (zgdbServiceExecuteArgs * object)
+zgdb_service_execute_args_instance_init (ZgdbServiceExecuteArgs * object)
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
@@ -999,7 +999,7 @@ zgdb_service_execute_args_instance_init (zgdbServiceExecuteArgs * object)
 static void 
 zgdb_service_execute_args_finalize (GObject *object)
 {
-  zgdbServiceExecuteArgs *tobject = ZGDB_SERVICE_EXECUTE_ARGS (object);
+  ZgdbServiceExecuteArgs *tobject = ZGDB_SERVICE_EXECUTE_ARGS (object);
 
   /* satisfy -Wall in case we don't use tobject */
   THRIFT_UNUSED_VAR (tobject);
@@ -1011,7 +1011,7 @@ zgdb_service_execute_args_finalize (GObject *object)
 }
 
 static void
-zgdb_service_execute_args_class_init (zgdbServiceExecuteArgsClass * cls)
+zgdb_service_execute_args_class_init (ZgdbServiceExecuteArgsClass * cls)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (cls);
   ThriftStructClass *struct_class = THRIFT_STRUCT_CLASS (cls);
@@ -1042,27 +1042,27 @@ zgdb_service_execute_args_get_type (void)
   {
     static const GTypeInfo type_info = 
     {
-      sizeof (zgdbServiceExecuteArgsClass),
+      sizeof (ZgdbServiceExecuteArgsClass),
       NULL, /* base_init */
       NULL, /* base_finalize */
       (GClassInitFunc) zgdb_service_execute_args_class_init,
       NULL, /* class_finalize */
       NULL, /* class_data */
-      sizeof (zgdbServiceExecuteArgs),
+      sizeof (ZgdbServiceExecuteArgs),
       0, /* n_preallocs */
       (GInstanceInitFunc) zgdb_service_execute_args_instance_init,
       NULL, /* value_table */
     };
 
     type = g_type_register_static (THRIFT_TYPE_STRUCT, 
-                                   "zgdbServiceExecuteArgsType",
+                                   "ZgdbServiceExecuteArgsType",
                                    &type_info, 0);
   }
 
   return type;
 }
 
-enum _zgdbServiceExecuteResultProperties
+enum _ZgdbServiceExecuteResultProperties
 {
   PROP_ZGDB_SERVICE_EXECUTE_RESULT_0,
   PROP_ZGDB_SERVICE_EXECUTE_RESULT_SUCCESS
@@ -1079,7 +1079,7 @@ zgdb_service_execute_result_read (ThriftStruct *object, ThriftProtocol *protocol
   gint16 fid;
   guint32 len = 0;
   gpointer data = NULL;
-  zgdbServiceExecuteResult * this_object = ZGDB_SERVICE_EXECUTE_RESULT(object);
+  ZgdbServiceExecuteResult * this_object = ZGDB_SERVICE_EXECUTE_RESULT(object);
 
   /* satisfy -Wall in case these aren't used */
   THRIFT_UNUSED_VAR (len);
@@ -1160,9 +1160,9 @@ zgdb_service_execute_result_write (ThriftStruct *object, ThriftProtocol *protoco
   gint32 ret;
   gint32 xfer = 0;
 
-  zgdbServiceExecuteResult * this_object = ZGDB_SERVICE_EXECUTE_RESULT(object);
+  ZgdbServiceExecuteResult * this_object = ZGDB_SERVICE_EXECUTE_RESULT(object);
   THRIFT_UNUSED_VAR (this_object);
-  if ((ret = thrift_protocol_write_struct_begin (protocol, "zgdbServiceExecuteResult", error)) < 0)
+  if ((ret = thrift_protocol_write_struct_begin (protocol, "ZgdbServiceExecuteResult", error)) < 0)
     return -1;
   xfer += ret;
   if (this_object->__isset_success == TRUE) {
@@ -1193,7 +1193,7 @@ zgdb_service_execute_result_set_property (GObject *object,
                                           const GValue *value,
                                           GParamSpec *pspec)
 {
-  zgdbServiceExecuteResult *self = ZGDB_SERVICE_EXECUTE_RESULT (object);
+  ZgdbServiceExecuteResult *self = ZGDB_SERVICE_EXECUTE_RESULT (object);
 
   switch (property_id)
   {
@@ -1216,7 +1216,7 @@ zgdb_service_execute_result_get_property (GObject *object,
                                           GValue *value,
                                           GParamSpec *pspec)
 {
-  zgdbServiceExecuteResult *self = ZGDB_SERVICE_EXECUTE_RESULT (object);
+  ZgdbServiceExecuteResult *self = ZGDB_SERVICE_EXECUTE_RESULT (object);
 
   switch (property_id)
   {
@@ -1231,7 +1231,7 @@ zgdb_service_execute_result_get_property (GObject *object,
 }
 
 static void 
-zgdb_service_execute_result_instance_init (zgdbServiceExecuteResult * object)
+zgdb_service_execute_result_instance_init (ZgdbServiceExecuteResult * object)
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
@@ -1242,7 +1242,7 @@ zgdb_service_execute_result_instance_init (zgdbServiceExecuteResult * object)
 static void 
 zgdb_service_execute_result_finalize (GObject *object)
 {
-  zgdbServiceExecuteResult *tobject = ZGDB_SERVICE_EXECUTE_RESULT (object);
+  ZgdbServiceExecuteResult *tobject = ZGDB_SERVICE_EXECUTE_RESULT (object);
 
   /* satisfy -Wall in case we don't use tobject */
   THRIFT_UNUSED_VAR (tobject);
@@ -1254,7 +1254,7 @@ zgdb_service_execute_result_finalize (GObject *object)
 }
 
 static void
-zgdb_service_execute_result_class_init (zgdbServiceExecuteResultClass * cls)
+zgdb_service_execute_result_class_init (ZgdbServiceExecuteResultClass * cls)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (cls);
   ThriftStructClass *struct_class = THRIFT_STRUCT_CLASS (cls);
@@ -1285,20 +1285,20 @@ zgdb_service_execute_result_get_type (void)
   {
     static const GTypeInfo type_info = 
     {
-      sizeof (zgdbServiceExecuteResultClass),
+      sizeof (ZgdbServiceExecuteResultClass),
       NULL, /* base_init */
       NULL, /* base_finalize */
       (GClassInitFunc) zgdb_service_execute_result_class_init,
       NULL, /* class_finalize */
       NULL, /* class_data */
-      sizeof (zgdbServiceExecuteResult),
+      sizeof (ZgdbServiceExecuteResult),
       0, /* n_preallocs */
       (GInstanceInitFunc) zgdb_service_execute_result_instance_init,
       NULL, /* value_table */
     };
 
     type = g_type_register_static (THRIFT_TYPE_STRUCT, 
-                                   "zgdbServiceExecuteResultType",
+                                   "ZgdbServiceExecuteResultType",
                                    &type_info, 0);
   }
 

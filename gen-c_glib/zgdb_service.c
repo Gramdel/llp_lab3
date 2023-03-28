@@ -10,7 +10,7 @@
 #include "zgdb_service.h"
 
 gboolean
-zgdb_service_if_execute (zgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error)
+zgdb_service_if_execute (ZgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error)
 {
   return ZGDB_SERVICE_IF_GET_INTERFACE (iface)->execute (iface, _return, tree, error);
 }
@@ -23,7 +23,7 @@ zgdb_service_if_get_type (void)
   {
     static const GTypeInfo type_info =
     {
-      sizeof (zgdbServiceIfInterface),
+      sizeof (ZgdbServiceIfInterface),
       NULL,  /* base_init */
       NULL,  /* base_finalize */
       NULL,  /* class_init */
@@ -35,21 +35,21 @@ zgdb_service_if_get_type (void)
       NULL   /* value_table */
     };
     type = g_type_register_static (G_TYPE_INTERFACE,
-                                   "zgdbServiceIf",
+                                   "ZgdbServiceIf",
                                    &type_info, 0);
   }
   return type;
 }
 
 static void 
-zgdb_service_if_interface_init (zgdbServiceIfInterface *iface);
+zgdb_service_if_interface_init (ZgdbServiceIfInterface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (zgdbServiceClient, zgdb_service_client,
+G_DEFINE_TYPE_WITH_CODE (ZgdbServiceClient, zgdb_service_client,
                          G_TYPE_OBJECT, 
                          G_IMPLEMENT_INTERFACE (TYPE_ZGDB_SERVICE_IF,
                                                 zgdb_service_if_interface_init))
 
-enum _zgdbServiceClientProperties
+enum _ZgdbServiceClientProperties
 {
   PROP_0,
   PROP_ZGDB_SERVICE_CLIENT_INPUT_PROTOCOL,
@@ -59,7 +59,7 @@ enum _zgdbServiceClientProperties
 void
 zgdb_service_client_set_property (GObject *object, guint property_id, const GValue *value, GParamSpec *pspec)
 {
-  zgdbServiceClient *client = ZGDB_SERVICE_CLIENT (object);
+  ZgdbServiceClient *client = ZGDB_SERVICE_CLIENT (object);
 
   THRIFT_UNUSED_VAR (pspec);
 
@@ -77,7 +77,7 @@ zgdb_service_client_set_property (GObject *object, guint property_id, const GVal
 void
 zgdb_service_client_get_property (GObject *object, guint property_id, GValue *value, GParamSpec *pspec)
 {
-  zgdbServiceClient *client = ZGDB_SERVICE_CLIENT (object);
+  ZgdbServiceClient *client = ZGDB_SERVICE_CLIENT (object);
 
   THRIFT_UNUSED_VAR (pspec);
 
@@ -92,7 +92,7 @@ zgdb_service_client_get_property (GObject *object, guint property_id, GValue *va
   }
 }
 
-gboolean zgdb_service_client_send_execute (zgdbServiceIf * iface, const astNode_t * tree, GError ** error)
+gboolean zgdb_service_client_send_execute (ZgdbServiceIf * iface, const astNode_t * tree, GError ** error)
 {
   gint32 cseqid = 0;
   ThriftProtocol * protocol = ZGDB_SERVICE_CLIENT (iface)->output_protocol;
@@ -137,7 +137,7 @@ gboolean zgdb_service_client_send_execute (zgdbServiceIf * iface, const astNode_
   return TRUE;
 }
 
-gboolean zgdb_service_client_recv_execute (zgdbServiceIf * iface, gchar ** _return, GError ** error)
+gboolean zgdb_service_client_recv_execute (ZgdbServiceIf * iface, gchar ** _return, GError ** error)
 {
   gint32 rseqid;
   gchar * fname = NULL;
@@ -265,7 +265,7 @@ gboolean zgdb_service_client_recv_execute (zgdbServiceIf * iface, gchar ** _retu
   return TRUE;
 }
 
-gboolean zgdb_service_client_execute (zgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error)
+gboolean zgdb_service_client_execute (ZgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error)
 {
   if (!zgdb_service_client_send_execute (iface, tree, error))
     return FALSE;
@@ -275,20 +275,20 @@ gboolean zgdb_service_client_execute (zgdbServiceIf * iface, gchar ** _return, c
 }
 
 static void
-zgdb_service_if_interface_init (zgdbServiceIfInterface *iface)
+zgdb_service_if_interface_init (ZgdbServiceIfInterface *iface)
 {
   iface->execute = zgdb_service_client_execute;
 }
 
 static void
-zgdb_service_client_init (zgdbServiceClient *client)
+zgdb_service_client_init (ZgdbServiceClient *client)
 {
   client->input_protocol = NULL;
   client->output_protocol = NULL;
 }
 
 static void
-zgdb_service_client_class_init (zgdbServiceClientClass *cls)
+zgdb_service_client_class_init (ZgdbServiceClientClass *cls)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (cls);
   GParamSpec *param_spec;
@@ -314,15 +314,15 @@ zgdb_service_client_class_init (zgdbServiceClientClass *cls)
 }
 
 static void
-zgdb_service_handler_zgdb_service_if_interface_init (zgdbServiceIfInterface *iface);
+zgdb_service_handler_zgdb_service_if_interface_init (ZgdbServiceIfInterface *iface);
 
-G_DEFINE_TYPE_WITH_CODE (zgdbServiceHandler, 
+G_DEFINE_TYPE_WITH_CODE (ZgdbServiceHandler, 
                          zgdb_service_handler,
                          G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (TYPE_ZGDB_SERVICE_IF,
                                                 zgdb_service_handler_zgdb_service_if_interface_init))
 
-gboolean zgdb_service_handler_execute (zgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error)
+gboolean zgdb_service_handler_execute (ZgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error)
 {
   g_return_val_if_fail (IS_ZGDB_SERVICE_HANDLER (iface), FALSE);
 
@@ -330,34 +330,34 @@ gboolean zgdb_service_handler_execute (zgdbServiceIf * iface, gchar ** _return, 
 }
 
 static void
-zgdb_service_handler_zgdb_service_if_interface_init (zgdbServiceIfInterface *iface)
+zgdb_service_handler_zgdb_service_if_interface_init (ZgdbServiceIfInterface *iface)
 {
   iface->execute = zgdb_service_handler_execute;
 }
 
 static void
-zgdb_service_handler_init (zgdbServiceHandler *self)
+zgdb_service_handler_init (ZgdbServiceHandler *self)
 {
   THRIFT_UNUSED_VAR (self);
 }
 
 static void
-zgdb_service_handler_class_init (zgdbServiceHandlerClass *cls)
+zgdb_service_handler_class_init (ZgdbServiceHandlerClass *cls)
 {
   cls->execute = NULL;
 }
 
-enum _zgdbServiceProcessorProperties
+enum _ZgdbServiceProcessorProperties
 {
   PROP_ZGDB_SERVICE_PROCESSOR_0,
   PROP_ZGDB_SERVICE_PROCESSOR_HANDLER
 };
 
-G_DEFINE_TYPE (zgdbServiceProcessor,
+G_DEFINE_TYPE (ZgdbServiceProcessor,
                zgdb_service_processor,
                THRIFT_TYPE_DISPATCH_PROCESSOR)
 
-typedef gboolean (* zgdbServiceProcessorProcessFunction) (zgdbServiceProcessor *, 
+typedef gboolean (* ZgdbServiceProcessorProcessFunction) (ZgdbServiceProcessor *, 
                                                           gint32,
                                                           ThriftProtocol *,
                                                           ThriftProtocol *,
@@ -366,11 +366,11 @@ typedef gboolean (* zgdbServiceProcessorProcessFunction) (zgdbServiceProcessor *
 typedef struct
 {
   gchar *name;
-  zgdbServiceProcessorProcessFunction function;
+  ZgdbServiceProcessorProcessFunction function;
 } zgdb_service_processor_process_function_def;
 
 static gboolean
-zgdb_service_processor_process_execute (zgdbServiceProcessor *,
+zgdb_service_processor_process_execute (ZgdbServiceProcessor *,
                                         gint32,
                                         ThriftProtocol *,
                                         ThriftProtocol *,
@@ -385,7 +385,7 @@ zgdb_service_processor_process_function_defs[1] = {
 };
 
 static gboolean
-zgdb_service_processor_process_execute (zgdbServiceProcessor *self,
+zgdb_service_processor_process_execute (ZgdbServiceProcessor *self,
                                         gint32 sequence_id,
                                         ThriftProtocol *input_protocol,
                                         ThriftProtocol *output_protocol,
@@ -394,7 +394,7 @@ zgdb_service_processor_process_execute (zgdbServiceProcessor *self,
   gboolean result = TRUE;
   ThriftTransport * transport;
   ThriftApplicationException *xception;
-  zgdbServiceExecuteArgs * args =
+  ZgdbServiceExecuteArgs * args =
     g_object_new (TYPE_ZGDB_SERVICE_EXECUTE_ARGS, NULL);
 
   g_object_get (input_protocol, "transport", &transport, NULL);
@@ -405,7 +405,7 @@ zgdb_service_processor_process_execute (zgdbServiceProcessor *self,
   {
     astNode_t * tree;
     gchar * return_value;
-    zgdbServiceExecuteResult * result_struct;
+    ZgdbServiceExecuteResult * result_struct;
 
     g_object_get (args,
                   "tree", &tree,
@@ -437,7 +437,7 @@ zgdb_service_processor_process_execute (zgdbServiceProcessor *self,
     else
     {
       if (*error == NULL)
-        g_warning ("zgdbService.execute implementation returned FALSE "
+        g_warning ("ZgdbService.execute implementation returned FALSE "
                    "but did not set an error");
 
       xception =
@@ -493,7 +493,7 @@ zgdb_service_processor_dispatch_call (ThriftDispatchProcessor *dispatch_processo
   zgdb_service_processor_process_function_def *process_function_def;
   gboolean dispatch_result = FALSE;
 
-  zgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (dispatch_processor);
+  ZgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (dispatch_processor);
   ThriftDispatchProcessorClass *parent_class =
     g_type_class_peek_parent (ZGDB_SERVICE_PROCESSOR_GET_CLASS (self));
 
@@ -526,7 +526,7 @@ zgdb_service_processor_set_property (GObject *object,
                                      const GValue *value,
                                      GParamSpec *pspec)
 {
-  zgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (object);
+  ZgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (object);
 
   switch (property_id)
   {
@@ -548,7 +548,7 @@ zgdb_service_processor_get_property (GObject *object,
                                      GValue *value,
                                      GParamSpec *pspec)
 {
-  zgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (object);
+  ZgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (object);
 
   switch (property_id)
   {
@@ -564,7 +564,7 @@ zgdb_service_processor_get_property (GObject *object,
 static void
 zgdb_service_processor_dispose (GObject *gobject)
 {
-  zgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (gobject);
+  ZgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (gobject);
 
   if (self->handler != NULL)
   {
@@ -578,7 +578,7 @@ zgdb_service_processor_dispose (GObject *gobject)
 static void
 zgdb_service_processor_finalize (GObject *gobject)
 {
-  zgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (gobject);
+  ZgdbServiceProcessor *self = ZGDB_SERVICE_PROCESSOR (gobject);
 
   thrift_safe_hash_table_destroy (self->process_map);
 
@@ -586,7 +586,7 @@ zgdb_service_processor_finalize (GObject *gobject)
 }
 
 static void
-zgdb_service_processor_init (zgdbServiceProcessor *self)
+zgdb_service_processor_init (ZgdbServiceProcessor *self)
 {
   guint index;
 
@@ -600,7 +600,7 @@ zgdb_service_processor_init (zgdbServiceProcessor *self)
 }
 
 static void
-zgdb_service_processor_class_init (zgdbServiceProcessorClass *cls)
+zgdb_service_processor_class_init (ZgdbServiceProcessorClass *cls)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (cls);
   ThriftDispatchProcessorClass *dispatch_processor_class =

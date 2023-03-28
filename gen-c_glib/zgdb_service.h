@@ -11,92 +11,92 @@
 
 #include "structs_types.h"
 
-/* zgdbService service interface */
-typedef struct _zgdbServiceIf zgdbServiceIf;  /* dummy object */
+/* ZgdbService service interface */
+typedef struct _ZgdbServiceIf ZgdbServiceIf;  /* dummy object */
 
-struct _zgdbServiceIfInterface
+struct _ZgdbServiceIfInterface
 {
   GTypeInterface parent;
 
-  gboolean (*execute) (zgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
+  gboolean (*execute) (ZgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
 };
-typedef struct _zgdbServiceIfInterface zgdbServiceIfInterface;
+typedef struct _ZgdbServiceIfInterface ZgdbServiceIfInterface;
 
 GType zgdb_service_if_get_type (void);
 #define TYPE_ZGDB_SERVICE_IF (zgdb_service_if_get_type())
-#define ZGDB_SERVICE_IF(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_IF, zgdbServiceIf))
+#define ZGDB_SERVICE_IF(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_IF, ZgdbServiceIf))
 #define IS_ZGDB_SERVICE_IF(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_IF))
-#define ZGDB_SERVICE_IF_GET_INTERFACE(inst) (G_TYPE_INSTANCE_GET_INTERFACE ((inst), TYPE_ZGDB_SERVICE_IF, zgdbServiceIfInterface))
+#define ZGDB_SERVICE_IF_GET_INTERFACE(inst) (G_TYPE_INSTANCE_GET_INTERFACE ((inst), TYPE_ZGDB_SERVICE_IF, ZgdbServiceIfInterface))
 
-gboolean zgdb_service_if_execute (zgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
+gboolean zgdb_service_if_execute (ZgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
 
-/* zgdbService service client */
-struct _zgdbServiceClient
+/* ZgdbService service client */
+struct _ZgdbServiceClient
 {
   GObject parent;
 
   ThriftProtocol *input_protocol;
   ThriftProtocol *output_protocol;
 };
-typedef struct _zgdbServiceClient zgdbServiceClient;
+typedef struct _ZgdbServiceClient ZgdbServiceClient;
 
-struct _zgdbServiceClientClass
+struct _ZgdbServiceClientClass
 {
   GObjectClass parent;
 };
-typedef struct _zgdbServiceClientClass zgdbServiceClientClass;
+typedef struct _ZgdbServiceClientClass ZgdbServiceClientClass;
 
 GType zgdb_service_client_get_type (void);
 #define TYPE_ZGDB_SERVICE_CLIENT (zgdb_service_client_get_type())
-#define ZGDB_SERVICE_CLIENT(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_CLIENT, zgdbServiceClient))
-#define ZGDB_SERVICE_CLIENT_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_CLIENT, zgdbServiceClientClass))
+#define ZGDB_SERVICE_CLIENT(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_CLIENT, ZgdbServiceClient))
+#define ZGDB_SERVICE_CLIENT_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_CLIENT, ZgdbServiceClientClass))
 #define ZGDB_SERVICE_IS_CLIENT(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_CLIENT))
 #define ZGDB_SERVICE_IS_CLIENT_CLASS(c) (G_TYPE_CHECK_CLASS_TYPE ((c), TYPE_ZGDB_SERVICE_CLIENT))
-#define ZGDB_SERVICE_CLIENT_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_CLIENT, zgdbServiceClientClass))
+#define ZGDB_SERVICE_CLIENT_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_CLIENT, ZgdbServiceClientClass))
 
-gboolean zgdb_service_client_execute (zgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error);
-gboolean zgdb_service_client_send_execute (zgdbServiceIf * iface, const astNode_t * tree, GError ** error);
-gboolean zgdb_service_client_recv_execute (zgdbServiceIf * iface, gchar ** _return, GError ** error);
+gboolean zgdb_service_client_execute (ZgdbServiceIf * iface, gchar ** _return, const astNode_t * tree, GError ** error);
+gboolean zgdb_service_client_send_execute (ZgdbServiceIf * iface, const astNode_t * tree, GError ** error);
+gboolean zgdb_service_client_recv_execute (ZgdbServiceIf * iface, gchar ** _return, GError ** error);
 void zgdb_service_client_set_property (GObject *object, guint property_id, const GValue *value, GParamSpec *pspec);
 void zgdb_service_client_get_property (GObject *object, guint property_id, GValue *value, GParamSpec *pspec);
 
-/* zgdbService handler (abstract base class) */
-struct _zgdbServiceHandler
+/* ZgdbService handler (abstract base class) */
+struct _ZgdbServiceHandler
 {
   GObject parent;
 };
-typedef struct _zgdbServiceHandler zgdbServiceHandler;
+typedef struct _ZgdbServiceHandler ZgdbServiceHandler;
 
-struct _zgdbServiceHandlerClass
+struct _ZgdbServiceHandlerClass
 {
   GObjectClass parent;
 
-  gboolean (*execute) (zgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
+  gboolean (*execute) (ZgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
 };
-typedef struct _zgdbServiceHandlerClass zgdbServiceHandlerClass;
+typedef struct _ZgdbServiceHandlerClass ZgdbServiceHandlerClass;
 
 GType zgdb_service_handler_get_type (void);
 #define TYPE_ZGDB_SERVICE_HANDLER (zgdb_service_handler_get_type())
-#define ZGDB_SERVICE_HANDLER(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_HANDLER, zgdbServiceHandler))
+#define ZGDB_SERVICE_HANDLER(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_HANDLER, ZgdbServiceHandler))
 #define IS_ZGDB_SERVICE_HANDLER(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_HANDLER))
-#define ZGDB_SERVICE_HANDLER_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_HANDLER, zgdbServiceHandlerClass))
+#define ZGDB_SERVICE_HANDLER_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_HANDLER, ZgdbServiceHandlerClass))
 #define IS_ZGDB_SERVICE_HANDLER_CLASS(c) (G_TYPE_CHECK_CLASS_TYPE ((c), TYPE_ZGDB_SERVICE_HANDLER))
-#define ZGDB_SERVICE_HANDLER_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_HANDLER, zgdbServiceHandlerClass))
+#define ZGDB_SERVICE_HANDLER_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_HANDLER, ZgdbServiceHandlerClass))
 
-gboolean zgdb_service_handler_execute (zgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
+gboolean zgdb_service_handler_execute (ZgdbServiceIf *iface, gchar ** _return, const astNode_t * tree, GError **error);
 
-/* zgdbService processor */
-struct _zgdbServiceProcessor
+/* ZgdbService processor */
+struct _ZgdbServiceProcessor
 {
   ThriftDispatchProcessor parent;
 
   /* protected */
-  zgdbServiceHandler *handler;
+  ZgdbServiceHandler *handler;
   GHashTable *process_map;
 };
-typedef struct _zgdbServiceProcessor zgdbServiceProcessor;
+typedef struct _ZgdbServiceProcessor ZgdbServiceProcessor;
 
-struct _zgdbServiceProcessorClass
+struct _ZgdbServiceProcessorClass
 {
   ThriftDispatchProcessorClass parent;
 
@@ -108,14 +108,14 @@ struct _zgdbServiceProcessorClass
                              gint32 seqid,
                              GError **error);
 };
-typedef struct _zgdbServiceProcessorClass zgdbServiceProcessorClass;
+typedef struct _ZgdbServiceProcessorClass ZgdbServiceProcessorClass;
 
 GType zgdb_service_processor_get_type (void);
 #define TYPE_ZGDB_SERVICE_PROCESSOR (zgdb_service_processor_get_type())
-#define ZGDB_SERVICE_PROCESSOR(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_PROCESSOR, zgdbServiceProcessor))
+#define ZGDB_SERVICE_PROCESSOR(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_PROCESSOR, ZgdbServiceProcessor))
 #define IS_ZGDB_SERVICE_PROCESSOR(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_PROCESSOR))
-#define ZGDB_SERVICE_PROCESSOR_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_PROCESSOR, zgdbServiceProcessorClass))
+#define ZGDB_SERVICE_PROCESSOR_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), TYPE_ZGDB_SERVICE_PROCESSOR, ZgdbServiceProcessorClass))
 #define IS_ZGDB_SERVICE_PROCESSOR_CLASS(c) (G_TYPE_CHECK_CLASS_TYPE ((c), TYPE_ZGDB_SERVICE_PROCESSOR))
-#define ZGDB_SERVICE_PROCESSOR_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_PROCESSOR, zgdbServiceProcessorClass))
+#define ZGDB_SERVICE_PROCESSOR_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_PROCESSOR, ZgdbServiceProcessorClass))
 
 #endif /* ZGDB_SERVICE_H */

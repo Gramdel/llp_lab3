@@ -115,8 +115,8 @@ GType ast_node_t_get_type (void);
 
 /* constants */
 
-/* struct zgdbServiceExecuteArgs */
-struct _zgdbServiceExecuteArgs
+/* struct ZgdbServiceExecuteArgs */
+struct _ZgdbServiceExecuteArgs
 {
   ThriftStruct parent;
 
@@ -124,24 +124,24 @@ struct _zgdbServiceExecuteArgs
   astNode_t * tree;
   gboolean __isset_tree;
 };
-typedef struct _zgdbServiceExecuteArgs zgdbServiceExecuteArgs;
+typedef struct _ZgdbServiceExecuteArgs ZgdbServiceExecuteArgs;
 
-struct _zgdbServiceExecuteArgsClass
+struct _ZgdbServiceExecuteArgsClass
 {
   ThriftStructClass parent;
 };
-typedef struct _zgdbServiceExecuteArgsClass zgdbServiceExecuteArgsClass;
+typedef struct _ZgdbServiceExecuteArgsClass ZgdbServiceExecuteArgsClass;
 
 GType zgdb_service_execute_args_get_type (void);
 #define TYPE_ZGDB_SERVICE_EXECUTE_ARGS (zgdb_service_execute_args_get_type())
-#define ZGDB_SERVICE_EXECUTE_ARGS(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_EXECUTE_ARGS, zgdbServiceExecuteArgs))
-#define ZGDB_SERVICE_EXECUTE_ARGS_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), _TYPE_ZGDB_SERVICE_EXECUTE_ARGS, zgdbServiceExecuteArgsClass))
+#define ZGDB_SERVICE_EXECUTE_ARGS(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_EXECUTE_ARGS, ZgdbServiceExecuteArgs))
+#define ZGDB_SERVICE_EXECUTE_ARGS_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), _TYPE_ZGDB_SERVICE_EXECUTE_ARGS, ZgdbServiceExecuteArgsClass))
 #define IS_ZGDB_SERVICE_EXECUTE_ARGS(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_EXECUTE_ARGS))
 #define IS_ZGDB_SERVICE_EXECUTE_ARGS_CLASS(c) (G_TYPE_CHECK_CLASS_TYPE ((c), TYPE_ZGDB_SERVICE_EXECUTE_ARGS))
-#define ZGDB_SERVICE_EXECUTE_ARGS_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_EXECUTE_ARGS, zgdbServiceExecuteArgsClass))
+#define ZGDB_SERVICE_EXECUTE_ARGS_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_EXECUTE_ARGS, ZgdbServiceExecuteArgsClass))
 
-/* struct zgdbServiceExecuteResult */
-struct _zgdbServiceExecuteResult
+/* struct ZgdbServiceExecuteResult */
+struct _ZgdbServiceExecuteResult
 {
   ThriftStruct parent;
 
@@ -149,20 +149,20 @@ struct _zgdbServiceExecuteResult
   gchar * success;
   gboolean __isset_success;
 };
-typedef struct _zgdbServiceExecuteResult zgdbServiceExecuteResult;
+typedef struct _ZgdbServiceExecuteResult ZgdbServiceExecuteResult;
 
-struct _zgdbServiceExecuteResultClass
+struct _ZgdbServiceExecuteResultClass
 {
   ThriftStructClass parent;
 };
-typedef struct _zgdbServiceExecuteResultClass zgdbServiceExecuteResultClass;
+typedef struct _ZgdbServiceExecuteResultClass ZgdbServiceExecuteResultClass;
 
 GType zgdb_service_execute_result_get_type (void);
 #define TYPE_ZGDB_SERVICE_EXECUTE_RESULT (zgdb_service_execute_result_get_type())
-#define ZGDB_SERVICE_EXECUTE_RESULT(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_EXECUTE_RESULT, zgdbServiceExecuteResult))
-#define ZGDB_SERVICE_EXECUTE_RESULT_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), _TYPE_ZGDB_SERVICE_EXECUTE_RESULT, zgdbServiceExecuteResultClass))
+#define ZGDB_SERVICE_EXECUTE_RESULT(obj) (G_TYPE_CHECK_INSTANCE_CAST ((obj), TYPE_ZGDB_SERVICE_EXECUTE_RESULT, ZgdbServiceExecuteResult))
+#define ZGDB_SERVICE_EXECUTE_RESULT_CLASS(c) (G_TYPE_CHECK_CLASS_CAST ((c), _TYPE_ZGDB_SERVICE_EXECUTE_RESULT, ZgdbServiceExecuteResultClass))
 #define IS_ZGDB_SERVICE_EXECUTE_RESULT(obj) (G_TYPE_CHECK_INSTANCE_TYPE ((obj), TYPE_ZGDB_SERVICE_EXECUTE_RESULT))
 #define IS_ZGDB_SERVICE_EXECUTE_RESULT_CLASS(c) (G_TYPE_CHECK_CLASS_TYPE ((c), TYPE_ZGDB_SERVICE_EXECUTE_RESULT))
-#define ZGDB_SERVICE_EXECUTE_RESULT_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_EXECUTE_RESULT, zgdbServiceExecuteResultClass))
+#define ZGDB_SERVICE_EXECUTE_RESULT_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_ZGDB_SERVICE_EXECUTE_RESULT, ZgdbServiceExecuteResultClass))
 
 #endif /* STRUCTS_TYPES_H */
