@@ -51,6 +51,7 @@ void yyerror(astNode** tree, const char *msg) {
 %token<strVal> STRING
 %token<strVal> NAME
 %token FOREIGN
+%token EXIT
 
 %type<node> query
 %type<node> select
@@ -80,6 +81,7 @@ void yyerror(astNode** tree, const char *msg) {
 
 %%
 init: query { *tree = $1; YYACCEPT; }
+    | EXIT { *tree = NULL; YYACCEPT; }
 
 query: select { $$ = $1; }
      | insert { $$ = $1; }

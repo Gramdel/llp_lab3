@@ -35,11 +35,12 @@ or                        { yylval.opType = OP_OR_NODE; return LOGICAL_BOP; }
 not                       { yylval.opType = OP_NOT_NODE; return LOGICAL_UOP; }
 true                      { yylval.boolVal = true; return BOOL; }
 false                     { yylval.boolVal = false; return BOOL; }
+exit                      { return EXIT; }
 [+-]?[0-9]+               { yylval.intVal = atoi(yytext); return INT; }
 [+-]?[0-9]*\.[0-9]*       { yylval.doubleVal = atof(yytext); return DOUBLE; }
 \"[^\"]*\"                { yylval.strVal = strdup(yytext); return STRING; }
 [A-Za-z_][A-Za-z0-9_]*    { yylval.strVal = strdup(yytext); return NAME; }
 f\.                       { return FOREIGN; }
-\n                        { /* Считываем перенос строки, чтобы работал yylineno */ }
-.                         { /* Игнорируем всё остальное */ }
+[ \t\n]+                  { /* Игнорируем whitespace */ }
+.                         { return *yytext; }
 %%
