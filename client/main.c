@@ -9,7 +9,9 @@
 
 #include "graphql_ast.h"
 #include "parser.tab.h"
+#include "convertor.h"
 
+#include "../gen-c_glib/structs_types.h"
 #include "../gen-c_glib/zgdb_service.h"
 
 int main() {
@@ -34,7 +36,8 @@ int main() {
     gchar* response = NULL;
     while (yyparse(&tree) == 0) {
         printNode(tree, 0);
-        if (zgdb_service_client_execute(client, &response, tree, &error)) {
+        astNode_t* tree_t = convert(tree);
+        if (zgdb_service_client_execute(client, &response, tree_t, &error)) {
             printf("%s\n", response);
         } else {
             printf("ERROR!");
