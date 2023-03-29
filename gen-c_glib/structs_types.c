@@ -492,13 +492,38 @@ ast_node_t_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
     switch (fid)
     {
       case 1:
-        if (ftype == T_STRUCT)
+        if (ftype == T_LIST)
         {
-          if ((ret = thrift_struct_read (THRIFT_STRUCT (this_object->left), protocol, error)) < 0)
           {
-            return -1;
+            guint32 size;
+            guint32 i;
+            ThriftType element_type;
+
+            if ((ret = thrift_protocol_read_list_begin (protocol, &element_type,&size, error)) < 0)
+              return -1;
+            xfer += ret;
+
+            /* iterate through list elements */
+            for (i = 0; i < size; i++)
+            {
+              astNode_t * _elem0 = NULL;
+              if ( _elem0 != NULL)
+              {
+                g_object_unref (_elem0);
+              }
+              _elem0 = g_object_new (TYPE_AST_NODE_T, NULL);
+              if ((ret = thrift_struct_read (THRIFT_STRUCT (_elem0), protocol, error)) < 0)
+              {
+                g_object_unref (_elem0);
+                return -1;
+              }
+              xfer += ret;
+              g_ptr_array_add (this_object->left, _elem0);
+            }
+            if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)
+              return -1;
+            xfer += ret;
           }
-          xfer += ret;
           this_object->__isset_left = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -507,13 +532,38 @@ ast_node_t_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
         }
         break;
       case 2:
-        if (ftype == T_STRUCT)
+        if (ftype == T_LIST)
         {
-          if ((ret = thrift_struct_read (THRIFT_STRUCT (this_object->right), protocol, error)) < 0)
           {
-            return -1;
+            guint32 size;
+            guint32 i;
+            ThriftType element_type;
+
+            if ((ret = thrift_protocol_read_list_begin (protocol, &element_type,&size, error)) < 0)
+              return -1;
+            xfer += ret;
+
+            /* iterate through list elements */
+            for (i = 0; i < size; i++)
+            {
+              astNode_t * _elem1 = NULL;
+              if ( _elem1 != NULL)
+              {
+                g_object_unref (_elem1);
+              }
+              _elem1 = g_object_new (TYPE_AST_NODE_T, NULL);
+              if ((ret = thrift_struct_read (THRIFT_STRUCT (_elem1), protocol, error)) < 0)
+              {
+                g_object_unref (_elem1);
+                return -1;
+              }
+              xfer += ret;
+              g_ptr_array_add (this_object->right, _elem1);
+            }
+            if ((ret = thrift_protocol_read_list_end (protocol, error)) < 0)
+              return -1;
+            xfer += ret;
           }
-          xfer += ret;
           this_object->__isset_right = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -524,11 +574,11 @@ ast_node_t_read (ThriftStruct *object, ThriftProtocol *protocol, GError **error)
       case 3:
         if (ftype == T_I32)
         {
-          gint32 ecast0;
-          if ((ret = thrift_protocol_read_i32 (protocol, &ecast0, error)) < 0)
+          gint32 ecast2;
+          if ((ret = thrift_protocol_read_i32 (protocol, &ecast2, error)) < 0)
             return -1;
           xfer += ret;
-          this_object->type = (nodeType_t)ecast0;
+          this_object->type = (nodeType_t)ecast2;
           this_object->__isset_type = TRUE;
         } else {
           if ((ret = thrift_protocol_skip (protocol, ftype, error)) < 0)
@@ -580,26 +630,56 @@ ast_node_t_write (ThriftStruct *object, ThriftProtocol *protocol, GError **error
   if ((ret = thrift_protocol_write_struct_begin (protocol, "astNode_t", error)) < 0)
     return -1;
   xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "left", T_STRUCT, 1, error)) < 0)
-    return -1;
-  xfer += ret;
-  if ((ret = thrift_struct_write (THRIFT_STRUCT (this_object->left), protocol, error)) < 0)
-    return -1;
-  xfer += ret;
+  if (this_object->__isset_left == TRUE) {
+    if ((ret = thrift_protocol_write_field_begin (protocol, "left", T_LIST, 1, error)) < 0)
+      return -1;
+    xfer += ret;
+    {
+      guint i3;
 
-  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
-    return -1;
-  xfer += ret;
-  if ((ret = thrift_protocol_write_field_begin (protocol, "right", T_STRUCT, 2, error)) < 0)
-    return -1;
-  xfer += ret;
-  if ((ret = thrift_struct_write (THRIFT_STRUCT (this_object->right), protocol, error)) < 0)
-    return -1;
-  xfer += ret;
+      if ((ret = thrift_protocol_write_list_begin (protocol, T_STRUCT, (gint32) (this_object->left ? this_object->left->len : 0), error)) < 0)
+        return -1;
+      xfer += ret;
+      for (i3 = 0; i3 < (this_object->left ? this_object->left->len : 0); i3++)
+      {
+        if ((ret = thrift_struct_write (THRIFT_STRUCT ((g_ptr_array_index ((GPtrArray *) this_object->left, i3))), protocol, error)) < 0)
+          return -1;
+        xfer += ret;
 
-  if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
-    return -1;
-  xfer += ret;
+      }
+      if ((ret = thrift_protocol_write_list_end (protocol, error)) < 0)
+        return -1;
+      xfer += ret;
+    }
+    if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+      return -1;
+    xfer += ret;
+  }
+  if (this_object->__isset_right == TRUE) {
+    if ((ret = thrift_protocol_write_field_begin (protocol, "right", T_LIST, 2, error)) < 0)
+      return -1;
+    xfer += ret;
+    {
+      guint i4;
+
+      if ((ret = thrift_protocol_write_list_begin (protocol, T_STRUCT, (gint32) (this_object->right ? this_object->right->len : 0), error)) < 0)
+        return -1;
+      xfer += ret;
+      for (i4 = 0; i4 < (this_object->right ? this_object->right->len : 0); i4++)
+      {
+        if ((ret = thrift_struct_write (THRIFT_STRUCT ((g_ptr_array_index ((GPtrArray *) this_object->right, i4))), protocol, error)) < 0)
+          return -1;
+        xfer += ret;
+
+      }
+      if ((ret = thrift_protocol_write_list_end (protocol, error)) < 0)
+        return -1;
+      xfer += ret;
+    }
+    if ((ret = thrift_protocol_write_field_end (protocol, error)) < 0)
+      return -1;
+    xfer += ret;
+  }
   if ((ret = thrift_protocol_write_field_begin (protocol, "type", T_I32, 3, error)) < 0)
     return -1;
   xfer += ret;
@@ -642,15 +722,15 @@ ast_node_t_set_property (GObject *object,
   {
     case PROP_AST_NODE_T_LEFT:
       if (self->left != NULL)
-        g_object_unref (self->left);
-      self->left = g_value_dup_object (value);
+        g_ptr_array_unref (self->left);
+      self->left = g_value_dup_boxed (value);
       self->__isset_left = TRUE;
       break;
 
     case PROP_AST_NODE_T_RIGHT:
       if (self->right != NULL)
-        g_object_unref (self->right);
-      self->right = g_value_dup_object (value);
+        g_ptr_array_unref (self->right);
+      self->right = g_value_dup_boxed (value);
       self->__isset_right = TRUE;
       break;
 
@@ -683,11 +763,11 @@ ast_node_t_get_property (GObject *object,
   switch (property_id)
   {
     case PROP_AST_NODE_T_LEFT:
-      g_value_set_object (value, self->left);
+      g_value_set_boxed (value, self->left);
       break;
 
     case PROP_AST_NODE_T_RIGHT:
-      g_value_set_object (value, self->right);
+      g_value_set_boxed (value, self->right);
       break;
 
     case PROP_AST_NODE_T_TYPE:
@@ -709,9 +789,9 @@ ast_node_t_instance_init (astNode_t * object)
 {
   /* satisfy -Wall */
   THRIFT_UNUSED_VAR (object);
-  object->left = g_object_new (TYPE_AST_NODE_T, NULL);
+  object->left = g_ptr_array_new_with_free_func (g_object_unref);
   object->__isset_left = FALSE;
-  object->right = g_object_new (TYPE_AST_NODE_T, NULL);
+  object->right = g_ptr_array_new_with_free_func (g_object_unref);
   object->__isset_right = FALSE;
   object->__isset_type = FALSE;
   object->val = g_object_new (TYPE_VALUE_T, NULL);
@@ -727,12 +807,12 @@ ast_node_t_finalize (GObject *object)
   THRIFT_UNUSED_VAR (tobject);
   if (tobject->left != NULL)
   {
-    g_object_unref(tobject->left);
+    g_ptr_array_unref (tobject->left);
     tobject->left = NULL;
   }
   if (tobject->right != NULL)
   {
-    g_object_unref(tobject->right);
+    g_ptr_array_unref (tobject->right);
     tobject->right = NULL;
   }
   if (tobject->val != NULL)
@@ -758,19 +838,19 @@ ast_node_t_class_init (astNode_tClass * cls)
   g_object_class_install_property
     (gobject_class,
      PROP_AST_NODE_T_LEFT,
-     g_param_spec_object ("left",
+     g_param_spec_boxed ("left",
                          NULL,
                          NULL,
-                         TYPE_AST_NODE_T,
+                         G_TYPE_PTR_ARRAY,
                          G_PARAM_READWRITE));
 
   g_object_class_install_property
     (gobject_class,
      PROP_AST_NODE_T_RIGHT,
-     g_param_spec_object ("right",
+     g_param_spec_boxed ("right",
                          NULL,
                          NULL,
-                         TYPE_AST_NODE_T,
+                         G_TYPE_PTR_ARRAY,
                          G_PARAM_READWRITE));
 
   g_object_class_install_property

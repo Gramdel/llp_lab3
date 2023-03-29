@@ -37,8 +37,8 @@ union value_t {
 }
 
 struct astNode_t {
-    1: astNode_t left;
-    2: astNode_t right;
+    1: optional list<astNode_t> left;
+    2: optional list<astNode_t> right;
     3: nodeType_t type;
     4: value_t val;
 }

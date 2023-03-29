@@ -49,12 +49,12 @@ typedef enum _nodeType_t nodeType_t;
 
 /* return the name of the constant */
 const char *
-toString_nodeType_t(int value);
+toString_nodeType_t(int value); 
 
 /* struct value_t */
 struct _value_t
-{
-  ThriftStruct parent;
+{ 
+  ThriftStruct parent; 
 
   /* public */
   gint32 intVal;
@@ -83,21 +83,21 @@ GType value_t_get_type (void);
 #define VALUE_T_GET_CLASS(obj) (G_TYPE_INSTANCE_GET_CLASS ((obj), TYPE_VALUE_T, value_tClass))
 
 /* struct astNode_t */
-typedef struct _astNode_t astNode_t;
 struct _astNode_t
-{
-  ThriftStruct parent;
+{ 
+  ThriftStruct parent; 
 
   /* public */
-  astNode_t * left;
+  GPtrArray * left;
   gboolean __isset_left;
-  astNode_t * right;
+  GPtrArray * right;
   gboolean __isset_right;
   nodeType_t type;
   gboolean __isset_type;
   value_t * val;
   gboolean __isset_val;
 };
+typedef struct _astNode_t astNode_t;
 
 struct _astNode_tClass
 {
@@ -117,8 +117,8 @@ GType ast_node_t_get_type (void);
 
 /* struct ZgdbServiceExecuteArgs */
 struct _ZgdbServiceExecuteArgs
-{
-  ThriftStruct parent;
+{ 
+  ThriftStruct parent; 
 
   /* public */
   astNode_t * tree;
@@ -142,8 +142,8 @@ GType zgdb_service_execute_args_get_type (void);
 
 /* struct ZgdbServiceExecuteResult */
 struct _ZgdbServiceExecuteResult
-{
-  ThriftStruct parent;
+{ 
+  ThriftStruct parent; 
 
   /* public */
   gchar * success;

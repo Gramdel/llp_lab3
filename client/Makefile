@@ -14,10 +14,10 @@ parser_debug: parser.y
 lexer: lexer.l
 	flex lexer.l
 
-main: parser lexer graphql_ast.c main.c
+main: parser lexer graphql_ast.c client.c
 	gcc parser.tab.c lex.yy.c graphql_ast.c convertor.c ../gen-c_glib/structs_types.c ../gen-c_glib/zgdb_service.c main.c $(THRIFT) -o main
 
-debug: parser_debug lexer graphql_ast.c main.c
+debug: parser_debug lexer graphql_ast.c client.c
 	gcc parser.tab.c lex.yy.c graphql_ast.c convertor.c ../gen-c_glib/structs_types.c ../gen-c_glib/zgdb_service.c main.c $(THRIFT) -o debug
 
 .PHONY: all clean parser parser_debug lexer
