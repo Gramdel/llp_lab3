@@ -9,7 +9,6 @@
 astNode_t* convert(astNode* node) {
     if (node) {
         value_t* val = g_object_new(TYPE_VALUE_T, NULL);
-        /*
         switch (node->type) {
             case INT_VAL_NODE:
                 g_object_set(val, "intVal", node->intVal, NULL);
@@ -27,7 +26,6 @@ astNode_t* convert(astNode* node) {
                 g_object_set(val, "strVal", node->strVal, NULL);
                 break;
         }
-         */
         // Рекурсивно вызываем функцию на node->left и node->right, если они не NULL:
         GPtrArray* left = g_ptr_array_new();
         if (node->left) {
