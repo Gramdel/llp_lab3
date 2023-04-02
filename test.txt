@@ -10,6 +10,14 @@ insert {
     root(values: [])
 }
 
+// true
+insert {
+    root(values: [{rootInt1 : 111}]) {
+        child(values: [{int1 : 1000}]),
+        child(values: [{int1 : -1000}])
+    }
+}
+
 // false
 insert {
     root(values: [{}])

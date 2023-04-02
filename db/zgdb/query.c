@@ -148,7 +148,8 @@ bool findAndMutate(zgdbFile* file, bool* error, iterator* it, uint64_t* indexNum
             for (uint64_t i = 0; i < q->length; i++) {
                 // В случае вставки в только что созданный документ, его детей проверять не надо. Просто вызываем рекурсию:
                 if (q->type == INSERT_QUERY && q->nestedQueries[i]->newValues) {
-                    if (!findAndMutate(file, error, it, indexNumber, q->nestedQueries[i], mutate)) {
+                    uint64_t parentIndexNumber = *indexNumber;
+                    if (!findAndMutate(file, error, it, &parentIndexNumber, q->nestedQueries[i], mutate)) {
                         return false;
                     }
                 } else {

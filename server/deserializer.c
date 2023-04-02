@@ -18,8 +18,8 @@ element* deserializeElementNode(astNode_t* elementNode) {
             case NODE_TYPE_T_BOOL_VAL_NODE:
                 return booleanElement(node1->val->strVal, node2->val->boolVal);
             case NODE_TYPE_T_STR_VAL_NODE:
-                // TODO: убрать кавычки
-                return stringElement(node1->val->strVal, node2->val->strVal);
+                return stringElement(node1->val->strVal,
+                                     g_utf8_substring(node2->val->strVal, 1, (glong) strlen(node2->val->strVal) - 1));
         }
     }
     return NULL;
