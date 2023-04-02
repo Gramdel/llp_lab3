@@ -185,8 +185,14 @@ bool checkCondition(element* el, condition* cond) {
 }
 
 bool checkDocument(zgdbFile* file, uint64_t indexNumber, query* q) {
-    // Если название схемы не указано, то это говорит о том, что документ ещё не создан. Возвращаем true:
+    // Если название схемы не указано, то это говорит о том, что документ ещё не создан, и проверять надо схему:
     if (q->type == INSERT_QUERY && !q->schemaName) {
+        if (q->cond) {
+            for (uint64_t i = 0; i < q->newValues->length; i++) {
+                checkCondition(q->newValues->elements[i], q->cond);
+            }
+            return q->cond->isMet;
+        }
         return true;
     }
     // Если документ существует, то проверяем его:
