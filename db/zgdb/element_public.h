@@ -23,6 +23,10 @@ element* booleanElement(const char* key, bool value);
  * Возвращает NULL при неудаче. */
 element* stringElement(const char* key, char* value);
 
+/* Функция для создания элемента без value. Ключ обязателен!
+ * Возвращает NULL при неудаче. */
+element* noValueElement(const char* key);
+
 /* Функция для уничтожения элемента. */
 void destroyElement(element* el);
 

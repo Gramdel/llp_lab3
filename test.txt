@@ -13,8 +13,20 @@ insert {
 // true
 insert {
     root(values: [{rootInt1 : 111}]) {
-        child(values: [{int1 : 1000}]),
-        child(values: [{int1 : -1000}])
+        child(values: [{str1 : "like"}, {str2 : "sssslike"}, {int1: 1000}]),
+        child(values: [{str1 : "like"}, {str2 : "sssslik"}, {int1: -1000}])
+    }
+}
+
+select {
+    root {
+        child(filter: like(str2, str1))
+    }
+}
+
+select {
+    root {
+        child(filter: le(str1, str2))
     }
 }
 

@@ -18,28 +18,60 @@ condition* createCondition(operationType type, void* operand1, void* operand2) {
     return cond;
 }
 
-condition* condEqual(element* el) {
-    return el ? createCondition(OP_EQ, el, NULL) : NULL;
+condition* condEqual(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_EQ, el1, el2);
+    }
+    return NULL;
 }
 
-condition* condNotEqual(element* el) {
-    return el ? createCondition(OP_NEQ, el, NULL) : NULL;
+condition* condNotEqual(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_NEQ, el1, el2);
+    }
+    return NULL;
 }
 
-condition* condGreater(element* el) {
-    return el ? createCondition(OP_GT, el, NULL) : NULL;
+condition* condGreater(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_GT, el1, el2);
+    }
+    return NULL;
 }
 
-condition* condGreaterOrEqual(element* el) {
-    return el ? createCondition(OP_GTE, el, NULL) : NULL;
+condition* condGreaterOrEqual(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_GTE, el1, el2);
+    }
+    return NULL;
 }
 
-condition* condLess(element* el) {
-    return el ? createCondition(OP_LE, el, NULL) : NULL;
+condition* condLess(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_LE, el1, el2);
+    }
+    return NULL;
 }
 
-condition* condLessOrEqual(element* el) {
-    return el ? createCondition(OP_LEE, el, NULL) : NULL;
+condition* condLessOrEqual(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_LEE, el1, el2);
+    }
+    return NULL;
+}
+
+condition* condLike(element* el1, element* el2) {
+    if (el1 && ((el1->type != TYPE_NOT_EXIST && !el2) ||
+                (el1->type == TYPE_NOT_EXIST && el2 && el2->type == TYPE_NOT_EXIST))) {
+        return createCondition(OP_LIKE, el1, el2);
+    }
+    return NULL;
 }
 
 condition* condAnd(condition* cond1, condition* cond2) {
@@ -60,7 +92,8 @@ void destroyCondition(condition* cond) {
             destroyCondition(cond->cond1);
             destroyCondition(cond->cond2);
         } else {
-            destroyElement(cond->el);
+            destroyElement(cond->el1);
+            destroyElement(cond->el2);
         }
         free(cond);
     }
@@ -70,8 +103,13 @@ void resetCondition(condition* cond) {
     if (cond) {
         cond->isMet = false;
         if (cond->opType >= OP_AND) {
+            // Для логических операций вызываем рекурсивный сброс:
             resetCondition(cond->cond1);
             resetCondition(cond->cond2);
+        } else if (cond->el2) {
+            // Если операция была над двумя элементами без значений, возвращаем их в изначальное состояние:
+            cond->el1->type = TYPE_NOT_EXIST;
+            cond->el2->type = TYPE_NOT_EXIST;
         }
     }
 }
@@ -81,30 +119,53 @@ bool checkCondition(element* el, condition* cond) {
     if (cond->isMet) {
         return true;
     }
-    // Если у элементов не совпадает тип или ключ, то нет смысла их сравнивать:
-    if (cond->opType < OP_AND && (el->type != cond->el->type || strcmp(el->key, cond->el->key) != 0)) {
-        return false;
+
+    // Для нелогических операций проводим ряд проверок:
+    if (cond->opType < OP_AND) {
+        if (cond->el2) {
+            // Для операций над двумя ключами, подгружаем значения, если они ещё не были подгружены:
+            if (cond->el1->type == TYPE_NOT_EXIST && strcmp(el->key, cond->el1->key) == 0) {
+                *cond->el1 = *el;
+            }
+            if (cond->el2->type == TYPE_NOT_EXIST && strcmp(el->key, cond->el2->key) == 0) {
+                *cond->el2 = *el;
+            }
+            // Если типы элементов не совпадают, то возвращаем false:
+            if (cond->el1->type != cond->el2->type) {
+                return false;
+            }
+        } else {
+            // Если операция над одним элементом, то проверяем, совпадают ли тип и ключ:
+            if (el->type != cond->el1->type || strcmp(el->key, cond->el1->key) != 0) {
+                return false;
+            }
+        }
     }
+
     // Проверяем условие в зависимости от типа операции:
     bool result;
     switch (cond->opType) {
         case OP_EQ:
-            result = compare(el, cond->el) == 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) == 0;
             break;
         case OP_NEQ:
-            result = compare(el, cond->el) != 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) != 0;
             break;
         case OP_GT:
-            result = compare(el, cond->el) > 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) > 0;
             break;
         case OP_GTE:
-            result = compare(el, cond->el) >= 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) >= 0;
             break;
         case OP_LE:
-            result = compare(el, cond->el) < 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) < 0;
             break;
         case OP_LEE:
-            result = compare(el, cond->el) <= 0;
+            result = (cond->el2 ? compare(cond->el1, cond->el2) : compare(el, cond->el1)) <= 0;
+            break;
+        case OP_LIKE:
+            result = cond->el2 ? strstr(cond->el1->stringValue.data, cond->el2->stringValue.data) :
+                     strstr(el->stringValue.data, cond->el1->stringValue.data);
             break;
         case OP_AND:
             result = checkCondition(el, cond->cond1) & checkCondition(el, cond->cond2);

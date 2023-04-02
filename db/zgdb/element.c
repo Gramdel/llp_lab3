@@ -38,6 +38,20 @@ element* stringElement(const char* key, char* value) {
     return NULL;
 }
 
+element* noValueElement(const char* key) {
+    if (key && strlen(key) <= 12) {
+        element* ptr = malloc(sizeof(element));
+        if (ptr) {
+            ptr->type = TYPE_NOT_EXIST;
+            ptr->wasLoaded = false; // устанавливаем флаг
+            memset(ptr->key, 0, 13);
+            strncpy(ptr->key, key, 13);
+            return ptr;
+        }
+    }
+    return NULL;
+}
+
 void destroyElement(element* el) {
     if (el) {
         // Если элемент был загружен из файла, то для stringValue.data был вызван malloc. Чистим:

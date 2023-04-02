@@ -154,12 +154,18 @@ astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode)
 
 void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode) {
     if (elementSetNode) {
+        while (elementSetNode->right) {
+            elementSetNode = elementSetNode->right;
+        }
         elementSetNode->right = nextElementSetNode;
     }
 }
 
 void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode) {
     if (querySetNode) {
+        while (querySetNode->right) {
+            querySetNode = querySetNode->right;
+        }
         querySetNode->right = nextQuerySetNode;
     }
 }

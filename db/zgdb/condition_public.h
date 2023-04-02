@@ -7,28 +7,53 @@
 typedef struct condition condition;
 
 /* Функция для создания условия типа "==".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue == value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue == key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condEqual(element* el);
+condition* condEqual(element* el1, element* el2);
 
 /* Функция для создания условия типа "!=".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue != value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue != key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condNotEqual(element* el);
+condition* condNotEqual(element* el1, element* el2);
 
 /* Функция для создания условия типа ">".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue > value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue > key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condGreater(element* el);
+condition* condGreater(element* el1, element* el2);
 
 /* Функция для создания условия типа ">=".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue >= value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue >= key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condGreaterOrEqual(element* el);
+condition* condGreaterOrEqual(element* el1, element* el2);
 
 /* Функция для создания условия типа "<".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue < value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue < key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condLess(element* el);
+condition* condLess(element* el1, element* el2);
 
 /* Функция для создания условия типа "<=".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue <= value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue <= key2.actualValue.
  * Возвращает NULL при неудаче. */
-condition* condLessOrEqual(element* el);
+condition* condLessOrEqual(element* el1, element* el2);
+
+/* Функция для создания условия типа "like".
+ * Есть два сценария использования:
+ * 1. el1 - полноценная пара key : value, el2 - NULL. Тогда будет проверено, что key.actualValue @@ value.
+ * 2. el1 и el2 содержат только ключи. Тогда будет проверено, что key1.actualValue @@ key2.actualValue.
+ * Возвращает NULL при неудаче. */
+condition* condLike(element* el1, element* el2);
 
 /* Функция для создания условия типа "&".
  * Возвращает NULL при неудаче. */

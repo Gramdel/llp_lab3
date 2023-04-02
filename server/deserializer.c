@@ -5,12 +5,6 @@ element* deserializeElementNode(astNode_t* elementNode) {
         astNode_t* node1 = elementNode->left->pdata[0];
         astNode_t* node2 = elementNode->right->pdata[0];
         switch (node2->type) {
-            case NODE_TYPE_T_KEY_NODE:
-                // TODO: вызов конструктора для двух ключей
-                break;
-            case NODE_TYPE_T_FOREIGN_KEY_NODE:
-                // TODO: вызов конструктора для ключа и чужого ключа
-                break;
             case NODE_TYPE_T_INT_VAL_NODE:
                 return intElement(node1->val->strVal, node2->val->intVal);
             case NODE_TYPE_T_DOUBLE_VAL_NODE:
@@ -41,30 +35,57 @@ documentSchema* deserializeValuesNode(astNode_t* valuesNode, const char* schemaN
 
 condition* deserializeOperationNode(astNode_t* operationNode) {
     if (operationNode) {
+        astNode_t* left = operationNode->left->pdata[0];
+        astNode_t* right = operationNode->right->pdata[0];
         switch (operationNode->type) {
             case NODE_TYPE_T_OP_EQ_NODE:
-                return condEqual(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condEqual(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condEqual(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_NEQ_NODE:
-                return condNotEqual(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condNotEqual(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condNotEqual(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_GT_NODE:
-                return condGreater(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condGreater(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condGreater(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_GTE_NODE:
-                return condGreaterOrEqual(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condGreaterOrEqual(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condGreaterOrEqual(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_LE_NODE:
-                return condLess(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condLess(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condLess(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_LEE_NODE:
-                return condLessOrEqual(deserializeElementNode(operationNode));
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condLessOrEqual(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condLessOrEqual(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_LIKE_NODE:
-                // TODO: like
-                break;
+                if (right->type == NODE_TYPE_T_KEY_NODE) {
+                    return condLike(noValueElement(left->val->strVal), noValueElement(right->val->strVal));
+                } else {
+                    return condLike(deserializeElementNode(operationNode), NULL);
+                }
             case NODE_TYPE_T_OP_AND_NODE:
-                return condAnd(deserializeOperationNode(operationNode->left->pdata[0]),
-                               deserializeOperationNode(operationNode->right->pdata[0]));
+                return condAnd(deserializeOperationNode(left), deserializeOperationNode(right));
             case NODE_TYPE_T_OP_OR_NODE:
-                return condOr(deserializeOperationNode(operationNode->left->pdata[0]),
-                              deserializeOperationNode(operationNode->right->pdata[0]));
+                return condOr(deserializeOperationNode(left), deserializeOperationNode(right));
             case NODE_TYPE_T_OP_NOT_NODE:
-                return condNot(deserializeOperationNode(operationNode->left->pdata[0]));
+                return condNot(deserializeOperationNode(left));
         }
     }
     return NULL;
