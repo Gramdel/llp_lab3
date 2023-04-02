@@ -215,10 +215,11 @@ bool checkDocument(zgdbFile* file, uint64_t indexNumber, query* q) {
                     checkCondition(doc->schema->elements[i], q->cond);
                 }
             }
+            destroyDocument(doc);
+            // Если условие не передано, возвращаем true; иначе - результат проверки:
+            return !q->cond || q->cond->isMet;
         }
         destroyDocument(doc);
-        // Если условие не передано, возвращаем true; иначе - результат проверки:
-        return !q->cond || q->cond->isMet;
     }
     return false;
 }

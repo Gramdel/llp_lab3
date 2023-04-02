@@ -16,7 +16,7 @@ typedef struct document document;
 void destroyDocument(document* doc);
 
 /* Функция для обычного вывода документа. Выводит поля и их значения. */
-void printDocument(document* doc);
+GString* printDocument(document* doc);
 
 /* Функция для вывода документа как дерева. Выводит вложенные документы. */
 void printDocumentAsTree(zgdbFile* file, document* doc);

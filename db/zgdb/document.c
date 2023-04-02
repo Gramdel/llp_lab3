@@ -11,7 +11,7 @@
 document* createDocument() {
     documentSchema* schema = malloc(sizeof(documentSchema));
     if (schema) {
-        *schema = (documentSchema) { 0 };
+        *schema = (documentSchema) {0};
         document* doc = malloc(sizeof(document));
         if (doc) {
             doc->schema = schema;
@@ -158,17 +158,22 @@ document* readDocument(zgdbFile* file, uint64_t indexNumber) {
     return NULL;
 }
 
-void printDocument(document* doc) {
+GString* printDocument(document* doc) {
+    GString* result = g_string_new(NULL);
     if (doc) {
-        printf("%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp, doc->header.id.offset);
+        g_string_printf(result, "%s#%08X%016X {\n", doc->header.schemaName, doc->header.id.timestamp,
+                        doc->header.id.offset);
         for (uint64_t i = 0; i < doc->schema->length; i++) {
-            printf("\t");
-            printElement(doc->schema->elements[i]);
+            GString* printedElement = printElement(doc->schema->elements[i]);
+            g_string_append(result, "\t");
+            g_string_append(result, printedElement->str);
+            g_string_free(printedElement, true);
         }
-        printf("}\n");
+        g_string_append(result, "}\n");
     } else {
-        printf("Document doesn't exist!\n");
+        g_string_printf(result, "Document doesn't exist!\n");
     }
+    return result;
 }
 
 void printTree(zgdbFile* file, documentHeader header, uint64_t nestingLevel) {

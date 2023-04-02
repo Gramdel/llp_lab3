@@ -20,20 +20,20 @@ element* createElement(const char* key, element el) {
 }
 
 element* intElement(const char* key, int32_t value) {
-    return createElement(key, (element) { .type = TYPE_INT, .integerValue = value });
+    return createElement(key, (element) {.type = TYPE_INT, .integerValue = value});
 }
 
 element* doubleElement(const char* key, double value) {
-    return createElement(key, (element) { .type = TYPE_DOUBLE, .doubleValue = value });
+    return createElement(key, (element) {.type = TYPE_DOUBLE, .doubleValue = value});
 }
 
 element* booleanElement(const char* key, bool value) {
-    return createElement(key, (element) { .type = TYPE_BOOLEAN, .booleanValue = (uint8_t) value });
+    return createElement(key, (element) {.type = TYPE_BOOLEAN, .booleanValue = (uint8_t) value});
 }
 
 element* stringElement(const char* key, char* value) {
     if (value) {
-        return createElement(key, (element) { .type = TYPE_STRING, .stringValue = (str) { strlen(value) + 1, value }});
+        return createElement(key, (element) {.type = TYPE_STRING, .stringValue = (str) {strlen(value) + 1, value}});
     }
     return NULL;
 }
@@ -124,26 +124,27 @@ uint64_t readElement(zgdbFile* file, element* el, bool skipStrings) {
     return 0;
 }
 
-void printElement(element* el) {
+GString* printElement(element* el) {
+    GString* result = g_string_new(NULL);
     if (el) {
-        printf("%s = ", el->key);
         switch (el->type) {
             case TYPE_INT:
-                printf("%d\n", el->integerValue);
+                g_string_printf(result, "%s = %d\n", el->key, el->integerValue);
                 break;
             case TYPE_DOUBLE:
-                printf("%f\n", el->doubleValue);
+                g_string_printf(result, "%s = %f\n", el->key, el->doubleValue);
                 break;
             case TYPE_BOOLEAN:
-                printf("%s\n", el->booleanValue ? "true" : "false");
+                g_string_printf(result, "%s = %s\n", el->key, el->booleanValue ? "true" : "false");
                 break;
             case TYPE_STRING:
-                printf("\"%s\"\n", el->stringValue.data);
+                g_string_printf(result, "%s = \"%s\"\n", el->key, el->stringValue.data);
                 break;
         }
     } else {
-        printf("Element doesn't exist!\n");
+        g_string_printf(result, "Element doesn't exist!\n");
     }
+    return result;
 }
 
 bool updateString(zgdbFile* file, zgdbIndex* index, documentHeader* header, element* oldEl, element* newEl) {

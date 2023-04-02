@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <glib.h>
 
 /* Структура для элемента схемы документа. */
 typedef struct element element;
@@ -31,6 +32,6 @@ element* noValueElement(const char* key);
 void destroyElement(element* el);
 
 /* Функция для вывода элемента на экран. */
-void printElement(element *el);
+GString* printElement(element *el);
 
 #endif

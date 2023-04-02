@@ -70,7 +70,7 @@ int main(int argc, char* argv[]) {
             // Отправка запроса:
             printf("Sending request...\n");
             if (zgdb_service_client_execute(client, &response, serialize(NULL, tree), &error)) {
-                printf("Response:\n%s\n", response);
+                printf("Response:\n%s", response);
                 g_free(response);
                 response = NULL;
             } else {

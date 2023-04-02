@@ -62,6 +62,7 @@ static gboolean
 zgdb_service_handler_impl_execute(ZgdbServiceIf* iface, gchar** _return, const astNode_t* tree, GError** error) {
     THRIFT_UNUSED_VAR(iface);
 
+    GString* result = g_string_new(NULL);
     astNode_t* querySetNode = tree->right->pdata[0];
     while (querySetNode) {
         astNode_t* queryNode = querySetNode->left->pdata[0];
@@ -70,32 +71,45 @@ zgdb_service_handler_impl_execute(ZgdbServiceIf* iface, gchar** _return, const a
         switch (tree->type) {
             case NODE_TYPE_T_SELECT_QUERY_NODE: {
                 iterator* it;
-                executeSelect(file, &errorOccurred, &it, q);
+                g_string_append(result, executeSelect(file, &errorOccurred, &it, q) ? "Successful SELECT!\n"
+                                                                                    : "Failed to SELECT!\n");
                 while (hasNext(it)) {
                     document* doc = next(file, it);
-                    printDocument(doc);
+                    GString* printedDoc = printDocument(doc);
+                    g_string_append(result, printedDoc->str);
+                    g_string_free(printedDoc, true);
                     destroyDocument(doc);
                 }
                 destroyIterator(it);
                 break;
             }
             case NODE_TYPE_T_INSERT_QUERY_NODE:
-                executeInsert(file, &errorOccurred, q);
+                g_string_append(result, executeInsert(file, &errorOccurred, q) ? "Successful INSERT!\n"
+                                                                               : "Failed to INSERT!\n");
                 break;
             case NODE_TYPE_T_UPDATE_QUERY_NODE:
-                executeUpdate(file, &errorOccurred, q);
+                g_string_append(result, executeUpdate(file, &errorOccurred, q) ? "Successful UPDATE!\n"
+                                                                               : "Failed to UPDATE!\n");
                 break;
             case NODE_TYPE_T_DELETE_QUERY_NODE:
-                executeDelete(file, &errorOccurred, q);
+                g_string_append(result, executeDelete(file, &errorOccurred, q) ? "Successful DELETE!\n"
+                                                                               : "Failed to DELETE!\n");
                 break;
         }
+        // Отлавливаем ошибку:
         if (errorOccurred) {
-            //g_set_error(error, ...);
+            destroyQuery(q);
+            g_string_free(result, true);
+            g_set_error(error, THRIFT_PROTOCOL_ERROR, THRIFT_PROTOCOL_ERROR_UNKNOWN,
+                        "An error occurred while executing query!\n");
+            return false;
         }
         querySetNode = querySetNode->right->len ? querySetNode->right->pdata[0] : NULL;
+        destroyQuery(q);
     }
 
-    *_return = g_strdup("SUCCESS");
+    *_return = g_strdup(result->str);
+    g_string_free(result, true);
     return true;
 }
 
