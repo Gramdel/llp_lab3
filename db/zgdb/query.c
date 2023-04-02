@@ -30,12 +30,11 @@ query* createSelectQuery(const char* schemaName, condition* cond) {
 }
 
 query* createInsertQuery(const char* schemaName, documentSchema* newValues, condition* cond) {
-    /* Если сам query (а не его будущие вложенные query) должен добавить новый документ, то добавление должно произойти
-     * без условий, ну и должна быть передана схема документа: */
-    if (!schemaName && (!newValues || cond)) {
+    /* Если query не используется для навигации по дереву, то должна быть передана схема документа: */
+    if (!schemaName && !newValues) {
         return NULL;
     }
-    /* Если сам query используется для навигации по дереву, то в него нельзя передать схему и его имя не должно быть
+    /* Если query используется для навигации по дереву, то в него нельзя передать схему и его имя не должно быть
      * длиннее 12 символов: */
     if (schemaName && (newValues || strlen(schemaName) > 12)) {
         return NULL;

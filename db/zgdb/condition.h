@@ -17,6 +17,7 @@ typedef enum operationType {
     OP_GTE, // операция ">="
     OP_LE, // операция "<"
     OP_LEE, // операция "<="
+    // TODO: OP_LIKE
     OP_AND, // операция "&"
     OP_OR, // операция "|"
     OP_NOT, // операция "!"

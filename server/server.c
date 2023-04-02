@@ -9,11 +9,14 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <glib.h>
 #include <glib-object.h>
 
 #include "../gen-c_glib/structs_types.h"
 #include "../gen-c_glib/zgdb_service.h"
+#include "../db/zgdb/query_public.h"
+#include "deserializer.h"
 
 
 // ================ START OF DECLARATIONS ================
@@ -42,6 +45,8 @@ GType zgdb_service_handler_impl_get_type(void);
 static gboolean
 zgdb_service_handler_impl_execute(ZgdbServiceIf* iface, gchar** _return, const astNode_t* tree, GError** error);
 
+static zgdbFile* file;
+
 G_END_DECLS
 
 
@@ -57,8 +62,40 @@ static gboolean
 zgdb_service_handler_impl_execute(ZgdbServiceIf* iface, gchar** _return, const astNode_t* tree, GError** error) {
     THRIFT_UNUSED_VAR(iface);
 
-    *_return = g_strdup("TEST");
+    astNode_t* querySetNode = tree->right->pdata[0];
+    while (querySetNode) {
+        astNode_t* queryNode = querySetNode->left->pdata[0];
+        query* q = deserializeQueryNode(queryNode, file);
+        bool errorOccurred = false;
+        switch (tree->type) {
+            case NODE_TYPE_T_SELECT_QUERY_NODE: {
+                iterator* it;
+                executeSelect(file, &errorOccurred, &it, q);
+                while (hasNext(it)) {
+                    document* doc = next(file, it);
+                    printDocument(doc);
+                    destroyDocument(doc);
+                }
+                destroyIterator(it);
+                break;
+            }
+            case NODE_TYPE_T_INSERT_QUERY_NODE:
+                executeInsert(file, &errorOccurred, q);
+                break;
+            case NODE_TYPE_T_UPDATE_QUERY_NODE:
+                executeUpdate(file, &errorOccurred, q);
+                break;
+            case NODE_TYPE_T_DELETE_QUERY_NODE:
+                executeDelete(file, &errorOccurred, q);
+                break;
+        }
+        if (errorOccurred) {
+            //g_set_error(error, ...);
+        }
+        querySetNode = querySetNode->right->len ? querySetNode->right->pdata[0] : NULL;
+    }
 
+    *_return = g_strdup("SUCCESS");
     return true;
 }
 
@@ -69,12 +106,10 @@ static void zgdb_service_handler_impl_finalize(GObject* object) {
     G_OBJECT_CLASS (zgdb_service_handler_impl_parent_class)->finalize(object);
 }
 
-/* TutorialCalculatorHandler's instance initializer (constructor) */
 static void zgdb_service_handler_impl_init(ZgdbServiceHandlerImpl* self) {
     // Нечего инициализировать
 }
 
-/* TutorialCalculatorHandler's class initializer */
 static void zgdb_service_handler_impl_class_init(ZgdbServiceHandlerImplClass* klass) {
     GObjectClass* gobject_class = G_OBJECT_CLASS (klass);
     ZgdbServiceHandlerClass* handler_class = ZGDB_SERVICE_HANDLER_CLASS (klass);
@@ -94,8 +129,30 @@ int main(int argc, char* argv[]) {
 #if (!GLIB_CHECK_VERSION(2, 36, 0))
     g_type_init ();
 #endif
+    // Проверка на количество аргументов:
+    if (argc != 3) {
+        printf("Usage: <filename> <port>\n");
+        return 1;
+    }
 
-    const int port = 9090;
+    char* filename = argv[1];
+    int port = (int) strtol(argv[2], NULL, 10);
+
+    // Базовая проверка на то, то порт перевёлся в число:
+    if (port <= 0 || errno) {
+        fprintf(stderr, "Error: port needs to be a positive number!\n");
+        return 1;
+    }
+
+    // Открываем или создаём файл базы:
+    file = loadFile(filename);
+    if (!file) {
+        file = createFile(filename);
+        if (!file) {
+            fprintf(stderr, "Error: couldn't open or create file!\n");
+            return 1;
+        }
+    }
 
     ZgdbServiceHandlerImpl* handler = g_object_new(TYPE_ZGDB_SERVICE_HANDLER_IMPL, NULL);
     ZgdbServiceProcessor* processor = g_object_new(TYPE_ZGDB_SERVICE_PROCESSOR, "handler", handler, NULL);
@@ -108,18 +165,18 @@ int main(int argc, char* argv[]) {
                                         protocol_factory, "output_protocol_factory", protocol_factory, NULL);
 
     printf("Welcome to ZGDB Server!\n");
+    printf("Opened file \"%s\"\n", filename);
     printf("Listening on port %d...\n", port);
 
     GError* error = NULL;
     thrift_server_serve(server, &error);
 
+    closeFile(file);
     g_object_unref(server);
     g_object_unref(protocol_factory);
     g_object_unref(transport_factory);
     g_object_unref(server_transport);
-
     g_object_unref(processor);
     g_object_unref(handler);
-
     return 0;
 }

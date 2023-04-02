@@ -32,7 +32,8 @@ add_executable(client_exec
         ${CLIENT_DIR}/lex.yy.c
         ${CLIENT_DIR}/graphql_ast.c
         ${CLIENT_DIR}/graphql_ast.h
-        ${CLIENT_DIR}/convertor.c
+        ${CLIENT_DIR}/serializer.c
+        ${CLIENT_DIR}/serializer.h
         ${CLIENT_DIR}/client.c
         ${GEN_DIR}/structs_types.c
         ${GEN_DIR}/structs_types.h
@@ -71,7 +72,7 @@ add_executable(server_exec
         ${GEN_DIR}/structs_types.h
         ${GEN_DIR}/zgdb_service.c
         ${GEN_DIR}/zgdb_service.h
-        )
+        server/deserializer.c server/deserializer.h)
 
 target_include_directories(client_exec PUBLIC ${THRIFT_INCLUDE_DIRS})
 target_include_directories(server_exec PUBLIC ${THRIFT_INCLUDE_DIRS})

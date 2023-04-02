@@ -10,7 +10,7 @@
 
 #include "graphql_ast.h"
 #include "parser.tab.h"
-#include "convertor.h"
+#include "serializer.h"
 
 #include "../gen-c_glib/zgdb_service.h"
 
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
             }
             // Отправка запроса:
             printf("Sending request...\n");
-            if (zgdb_service_client_execute(client, &response, convert(tree), &error)) {
+            if (zgdb_service_client_execute(client, &response, serialize(NULL, tree), &error)) {
                 printf("Response:\n%s\n", response);
                 g_free(response);
                 response = NULL;
