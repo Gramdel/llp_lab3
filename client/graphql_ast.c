@@ -242,10 +242,8 @@ void printNode(astNode* node, int32_t nestingLevel) {
                 printf("%s\n", node->strVal);
                 break;
             case FILTER_NODE:
-                printf("\n%*sJoin: ", nestingLevel, "");
-                printNode(node->left, nestingLevel);
-                printf("%*sOperation:\n", nestingLevel, "");
-                printNode(node->right, nestingLevel + 2);
+                printf("\n%*sOperation:\n", nestingLevel, "");
+                printNode(node->left, nestingLevel + 2);
                 break;
             case OP_EQ_NODE:
                 printf("%*sOperationType: Equal\n", nestingLevel, "");
