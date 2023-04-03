@@ -40,7 +40,6 @@ void yyerror(astNode** tree, const char *msg) {
 %token DELETE
 %token VALUES
 %token FILTER
-%token JOIN
 %token<opType> COMPARE_OP
 %token<opType> LIKE_OP
 %token<opType> LOGICAL_BOP
@@ -50,7 +49,6 @@ void yyerror(astNode** tree, const char *msg) {
 %token<doubleVal> DOUBLE
 %token<strVal> STRING
 %token<strVal> NAME
-%token FOREIGN
 %token EXIT
 
 %type<node> query
@@ -67,10 +65,8 @@ void yyerror(astNode** tree, const char *msg) {
 %type<node> values
 %type<node> element
 %type<node> key
-%type<node> foreign_key
 %type<node> value
 %type<node> filter
-%type<node> join
 %type<node> operation
 %type<node> compare_op
 %type<node> like_op
@@ -128,17 +124,12 @@ element: L_BRACE key COLON value R_BRACE { $$ = newElementSetNode(newElementNode
 
 key: NAME { if(strlen($1) > MAX_NAME_LENGTH) { yyerror(tree, "key is too long"); YYABORT; } $$ = newKeyNode($1); }
 
-foreign_key: FOREIGN key { $$ = newForeignKeyNode($2); }
-
 value: BOOL { $$ = newBoolValNode($1); }
      | INT { $$ = newIntValNode($1); }
      | DOUBLE { $$ = newDoubleValNode($1); }
      | STRING { $$ = newStrValNode($1); }
 
-filter: FILTER COLON operation { if(checkJoin($3)) { yyerror(tree, "use of foreign key without join"); YYABORT; } $$ = newFilterNode(NULL, $3); }
-      | FILTER COLON L_BRACKET join COMMA operation R_BRACKET { if(!checkJoin($6)) { yyerror(tree, "useless join"); YYABORT; } $$ = newFilterNode($4, $6); }
-
-join: JOIN L_PARENTHESIS schema_name R_PARENTHESIS  { $$ = newJoinNode($3); }
+filter: FILTER COLON operation { $$ = newFilterNode($3); }
 
 operation: compare_op { $$ = $1; }
          | like_op { $$ = $1; }
@@ -146,11 +137,9 @@ operation: compare_op { $$ = $1; }
 
 compare_op: COMPARE_OP L_PARENTHESIS key COMMA value R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
           | COMPARE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
-          | COMPARE_OP L_PARENTHESIS key COMMA foreign_key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 like_op: LIKE_OP L_PARENTHESIS key COMMA STRING R_PARENTHESIS { $$ = newOperationNode($1, $3, newStrValNode($5)); }
        | LIKE_OP L_PARENTHESIS key COMMA key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
-       | LIKE_OP L_PARENTHESIS key COMMA foreign_key R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }
 
 logical_op: LOGICAL_UOP L_PARENTHESIS operation R_PARENTHESIS { $$ = newOperationNode($1, $3, NULL); }
           | LOGICAL_BOP L_PARENTHESIS operation COMMA operation R_PARENTHESIS { $$ = newOperationNode($1, $3, $5); }

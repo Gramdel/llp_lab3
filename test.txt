@@ -26,7 +26,7 @@ update {
 
 select {
     root {
-        child(filter: like(str2, str1))
+        child(filter: or(like(str2, str1), eq(int1, -1000)))
     }
 }
 
@@ -80,21 +80,6 @@ insert {
 // true
 select {
     root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2)))
-}
-
-// true
-select {
-    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2))])
-}
-
-// false
-select {
-    root(filter: [join(child), or(eq(rootDouble1, 123.0), le(rootInt1, rootInt2))])
-}
-
-// false
-select {
-    root(filter: or(eq(rootDouble1, 123.0), le(rootInt1, f.rootInt2)))
 }
 
 // false

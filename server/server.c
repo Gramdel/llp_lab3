@@ -66,7 +66,7 @@ zgdb_service_handler_impl_execute(ZgdbServiceIf* iface, gchar** _return, const a
     astNode_t* querySetNode = tree->right->pdata[0];
     while (querySetNode) {
         astNode_t* queryNode = querySetNode->left->pdata[0];
-        query* q = deserializeQueryNode(queryNode, file);
+        query* q = deserializeQueryNode(queryNode);
         bool errorOccurred = false;
         switch (tree->type) {
             case NODE_TYPE_T_SELECT_QUERY_NODE: {

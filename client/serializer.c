@@ -30,7 +30,6 @@ astNode_t* serialize(nodeType* parentType, astNode* node) {
                 break;
             case KEY_NODE:
             case OBJECT_NODE:
-            case JOIN_NODE:
             case STR_VAL_NODE:
                 g_object_set(val, "strVal", node->strVal, NULL);
                 break;

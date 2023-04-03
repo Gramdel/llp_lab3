@@ -10,6 +10,6 @@ documentSchema* deserializeValuesNode(astNode_t* valuesNode, const char* schemaN
 
 condition* deserializeOperationNode(astNode_t* operationNode);
 
-query* deserializeQueryNode(astNode_t* queryNode, zgdbFile* file);
+query* deserializeQueryNode(astNode_t* queryNode);
 
 #endif

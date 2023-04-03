@@ -91,13 +91,12 @@ condition* deserializeOperationNode(astNode_t* operationNode) {
     return NULL;
 }
 
-query* deserializeQueryNode(astNode_t* queryNode, zgdbFile* file) {
+query* deserializeQueryNode(astNode_t* queryNode) {
     if (queryNode) {
         astNode_t* objectNode = queryNode->left->pdata[0];
         astNode_t* valuesNode = objectNode->left->len ? objectNode->left->pdata[0] : NULL;
         astNode_t* filterNode = objectNode->right->len ? objectNode->right->pdata[0] : NULL;
-        astNode_t* joinNode = filterNode && filterNode->left->len ? filterNode->left->pdata[0] : NULL;
-        astNode_t* operationNode = filterNode && filterNode->right->len ? filterNode->right->pdata[0] : NULL;
+        astNode_t* operationNode = filterNode && filterNode->left->len ? filterNode->left->pdata[0] : NULL;
 
         // Создаём запрос:
         query* q = NULL;
@@ -126,7 +125,7 @@ query* deserializeQueryNode(astNode_t* queryNode, zgdbFile* file) {
             while (querySetNode) {
                 queryNode = querySetNode->left->pdata[0];
                 querySetNode = querySetNode->right->len ? querySetNode->right->pdata[0] : NULL;
-                addNestedQuery(q, deserializeQueryNode(queryNode, file));
+                addNestedQuery(q, deserializeQueryNode(queryNode));
             }
             return q;
         }

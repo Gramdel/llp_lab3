@@ -16,13 +16,11 @@ typedef enum nodeType {
     ELEMENT_SET_NODE, // узел списка элементов; в node->left - element,  в node->right - указатель на следующий узел в списке
     ELEMENT_NODE,
     KEY_NODE,
-    FOREIGN_KEY_NODE,
     INT_VAL_NODE,
     DOUBLE_VAL_NODE,
     BOOL_VAL_NODE,
     STR_VAL_NODE,
     FILTER_NODE,
-    JOIN_NODE,
     OP_EQ_NODE,
     OP_NEQ_NODE,
     OP_GT_NODE,
@@ -60,8 +58,6 @@ astNode* newStrValNode(char* strVal);
 
 astNode* newKeyNode(char* key);
 
-astNode* newForeignKeyNode(astNode* keyNode);
-
 astNode* newElementNode(astNode* keyNode, astNode* valNode);
 
 astNode* newElementSetNode(astNode* elementNode);
@@ -70,9 +66,7 @@ astNode* newValuesNode(astNode* elementSetNode);
 
 astNode* newOperationNode(nodeType type, astNode* left, astNode* right);
 
-astNode* newJoinNode(char* schemaName);
-
-astNode* newFilterNode(astNode* operationNode, astNode* joinNode);
+astNode* newFilterNode(astNode* operationNode);
 
 astNode* newObjectNode(char* schemaName, astNode* valuesNode, astNode* filterNode);
 
@@ -83,8 +77,6 @@ astNode* newQueryNode(nodeType type, astNode* objectNode, astNode* querySetNode)
 void addNextElementToSet(astNode* elementSetNode, astNode* nextElementSetNode);
 
 void addNextQueryToSet(astNode* querySetNode, astNode* nextQuerySetNode);
-
-bool checkJoin(astNode* operationNode);
 
 void destroyNode(astNode* node);
 
