@@ -1,5 +1,5 @@
 # Low-level programming lab3
-### Вариант 4: Thrift
+### Вариант 4: Thrift [(отчёт)](lab3.pdf)
 #### Сборка
 + Linux / Windows:
 ```
