@@ -59,6 +59,7 @@ int main(int argc, char* argv[]) {
     astNode* tree = NULL;
     gchar* response = NULL;
     while (true) {
+        printf("> ");
         yyset_lineno(1); // сброс счётчика строк лексера
         yyrestart(stdin); // чистка буфера (чтобы после ошибок всё было ок)
         if (yyparse(&tree) == 0) {
